@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agents and Images</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400&family=Arimo:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--chrome:#1f2329;--chrome-fg:#e8eaed;--chrome-dim:#9aa0a6;--accent:#5b8def;}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--chrome);color:var(--chrome-fg);font-family:Arimo,Arial,sans-serif;overflow:hidden}
+#stage{position:absolute;inset:0 0 48px 0;display:flex;align-items:center;justify-content:center}
+body.notes #stage{bottom:calc(48px + 30vh)}
+body.fs #stage{bottom:0}
+#deck{position:relative;width:960px;height:540px;transform-origin:center center;flex:none}
+.slide{position:absolute;inset:0;width:960px;height:540px;overflow:hidden;display:none;box-shadow:0 8px 40px rgba(0,0,0,.45);
+  color:#1f2933;font-family:'Times New Roman',Tinos,serif;line-height:1.15}
+.slide.on{display:block}
+.el{position:absolute;margin:0}
+.sh{overflow:visible}
+.tx{position:absolute;display:flex;flex-direction:column}
+.tx p{margin:0;white-space:pre-wrap;overflow-wrap:break-word}
+.bul{position:absolute;top:0}
+sub{font-size:70%;vertical-align:-0.25em;line-height:0}
+sub span{font-size:inherit!important}
+.pnum{position:absolute;right:28px;bottom:16px;font:14px 'Times New Roman',Tinos,serif;color:#5f6b7a;pointer-events:none}
+.lines{position:absolute;inset:0;width:960px;height:540px;pointer-events:none;overflow:visible}
+.tb{border-collapse:collapse;table-layout:fixed}
+.tb td{vertical-align:top;padding:6px 9.6px;border-bottom:1px solid #c5cbd3}
+.tb tr:first-child td{border-bottom:1.5px solid #1f2933}
+.tb td p{margin:0}
+/* ---- entrance animations: restart whenever a slide becomes visible ---- */
+.slide [data-s]:not(.in){visibility:hidden}
+.slide [data-o].gone{opacity:0;visibility:hidden}
+.slide.on [data-o].gone:not(.gone-now){visibility:visible;animation:aOut .45s ease both}
+@keyframes aOut{from{opacity:1}to{opacity:0;visibility:hidden}}
+.thumb [data-o],#pnextBox [data-o]{visibility:hidden!important}
+.slide.on .a.in{animation:var(--fx) .6s cubic-bezier(.2,.75,.25,1) both;animation-delay:var(--d,0s)}
+.slide.on .a.in.instant{animation:none}
+.fx-fade{--fx:aFade}.fx-up{--fx:aUp}.fx-down{--fx:aDown}.fx-left{--fx:aLeft}.fx-right{--fx:aRight}
+.fx-pop{--fx:aPop}.fx-draw{--fx:aDraw}.fx-growx{--fx:aGrowX;transform-origin:left center}.fx-growy{--fx:aGrowY;transform-origin:center bottom}
+.slide.on .fx-growx,.slide.on .fx-growy{animation-duration:.7s}
+.slide.on .fx-draw.in{animation-duration:.8s;animation-timing-function:ease-in-out}
+@keyframes aDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes aFade{from{opacity:0}to{opacity:1}}
+@keyframes aUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes aDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+@keyframes aLeft{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
+@keyframes aRight{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@keyframes aPop{0%{opacity:0;transform:scale(.5)}70%{opacity:1;transform:scale(1.06)}100%{opacity:1;transform:none}}
+@keyframes aGrowX{from{opacity:.2;transform:scaleX(0)}to{opacity:1;transform:none}}
+@keyframes aGrowY{from{opacity:.2;transform:scaleY(0)}to{opacity:1;transform:none}}
+body.noanim .slide.on,body.noanim .slide.on .a.in,.thumb .slide .a,.thumb .slide{animation:none!important}
+.thumb .slide [data-s]{visibility:visible!important}
+@media (prefers-reduced-motion:reduce){.slide.on,.slide.on .a.in{animation:none!important}}
+#bar{position:absolute;left:0;right:0;bottom:0;height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;
+  background:#16191d;border-top:1px solid #2c3138;font-size:13px}
+body.fs #bar{display:none}
+#bar button{background:transparent;border:1px solid #3a4048;color:var(--chrome-fg);border-radius:6px;height:32px;min-width:32px;
+  padding:0 10px;cursor:pointer;font:inherit}
+#bar button:hover{background:#2a2f36}
+#bar button.act{border-color:var(--accent);color:#fff;background:#24324d}
+#steps{display:flex;gap:4px;align-items:center;min-width:0}
+#steps i{width:6px;height:6px;border-radius:50%;background:#3a4048}
+#steps i.on{background:var(--accent)}
+#count{min-width:64px;text-align:center;color:var(--chrome-dim);font-variant-numeric:tabular-nums}
+#prog{flex:1;height:4px;background:#2c3138;border-radius:2px;overflow:hidden}
+#prog i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+#hint{color:var(--chrome-dim);white-space:nowrap}
+#notes{position:absolute;left:0;right:0;bottom:48px;height:30vh;display:none;padding:14px 20px;overflow:auto;
+  background:#191c20;border-top:1px solid #2c3138;font-size:16px;line-height:1.55;color:#d5d8dc}
+#notes h4{margin:0 0 6px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--chrome-dim);font-weight:700}
+body.notes #notes{display:block}
+body.fs #notes{display:none}
+#grid{position:absolute;inset:0;display:none;overflow:auto;padding:24px;background:var(--chrome);z-index:5}
+body.grid #grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px;align-content:start}
+.thumb{position:relative;aspect-ratio:16/9;cursor:pointer;border-radius:4px;overflow:hidden;outline:2px solid transparent}
+.thumb:hover,.thumb.cur{outline-color:var(--accent)}
+.thumb .slide{display:block;transform-origin:0 0;box-shadow:none}
+.thumb b{position:absolute;left:6px;bottom:4px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;padding:1px 6px;border-radius:3px}
+/* ---- presenter view (opened with P, synced with the audience window) ---- */
+#toast{position:fixed;left:50%;top:18px;transform:translate(-50%,-12px);max-width:min(720px,90vw);padding:10px 16px;border-radius:8px;background:#2a3140;color:#fff;font-size:14px;line-height:1.4;box-shadow:0 6px 24px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#pstepbar{display:none}
+body.presenter #pstepbar{display:flex;align-items:center;gap:14px;position:sticky;top:-12px;margin:-12px -18px 12px;padding:12px 18px;
+  background:#20262f;border-bottom:1px solid #2c3138;z-index:2}
+#pstepdots{display:flex;gap:7px;flex-wrap:wrap;max-width:55%}
+#pstepdots i{width:14px;height:14px;border-radius:50%;border:2px solid #5b8def;box-sizing:border-box}
+#pstepdots i.done{background:#5b8def}
+#psteptext{font-size:20px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums}
+#psteptext small{display:block;font-size:13px;font-weight:400;color:var(--chrome-dim)}
+#pstepbar.last{background:#1f2e25}
+#pstepbar.last #psteptext{color:#8fd19e}
+#notesText .seg{transition:opacity .2s,color .2s}
+#notesText .seg.past{opacity:.38}
+#notesText .seg.future{opacity:.6}
+#notesText .seg.cur{opacity:1;color:#fff}
+#notesText .star{display:inline-block;margin:0 4px 0 2px;padding:0 6px;border-radius:9px;font-size:.72em;line-height:1.5;
+  vertical-align:.12em;color:#1b1e23;background:#f5c542;font-weight:700}
+#notesText .star.past{opacity:.35}
+#notesText .star.future{background:#6b6040;color:#e8e2cc}
+#pbar,#pnext{display:none}
+body.presenter #bar{display:none}
+body.presenter #pbar{display:flex;position:absolute;left:0;right:0;top:0;height:56px;align-items:center;gap:14px;padding:0 18px;
+  background:#16191d;border-bottom:1px solid #2c3138;font-size:14px}
+body.presenter #stage{inset:56px 38% 0 0}
+body.presenter #pnext{display:flex;flex-direction:column;position:absolute;right:0;top:56px;width:38%;height:36vh;padding:12px 18px 8px;gap:8px}
+body.presenter #notes{display:block;left:62%;right:0;top:calc(56px + 36vh);bottom:0;height:auto;border-top:1px solid #2c3138;
+  font-size:var(--nfs,22px);line-height:1.5;padding:12px 18px 24px}
+#pbar .big{font-size:22px;font-variant-numeric:tabular-nums;color:#fff}
+#pbar .dim{color:var(--chrome-dim)}
+#pbar button{background:transparent;border:1px solid #3a4048;color:var(--chrome-fg);border-radius:6px;height:32px;min-width:32px;padding:0 10px;cursor:pointer;font:inherit}
+#pbar button:hover{background:#2a2f36}
+#pbar .sp{flex:1}
+#ptimer{cursor:pointer}
+#pnextLab{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--chrome-dim);font-weight:700}
+#pnextBox{position:relative;flex:1;min-height:0}
+#pnextBox .frame{position:absolute;left:0;top:0;width:960px;height:540px;transform-origin:0 0;border-radius:4px;overflow:hidden;outline:1px solid #3a4048}
+#pnextBox .slide{display:block;box-shadow:none}
+#pnextBox .slide [data-s]{visibility:visible!important;animation:none!important}
+#pnextBox .end{color:var(--chrome-dim);font-size:18px;padding-top:20px}
+@media (max-width:1180px){#hint{display:none}}
+@media (max-width:640px){#hint{display:none}#bar{gap:4px;padding:0 6px}#bar button{padding:0 7px}}
+@media print{
+  @page{size:960px 540px;margin:0}
+  html,body{overflow:visible;height:auto;background:#fff}
+  #bar,#notes,#grid{display:none!important}
+  #stage{position:static;display:block}
+  #deck{transform:none!important;width:auto;height:auto}
+  .slide{position:relative;display:block;box-shadow:none;page-break-after:always}
+  .slide,.slide .a{animation:none!important}
+  .slide [data-s]{visibility:visible!important}
+  .slide [data-o]{visibility:hidden!important}
+}
+</style>
+</head>
+<body>
+<div id="stage"><div id="deck">
+<section class="slide" style="background:#ffffff" data-i="0" data-steps="0"><div class="el sh a fx-down" data-s="0" style="--d:0s;left:67.2px;top:170px;width:825.6px;height:90px;"><div class="tx" style="inset:9.6px;justify-content:flex-start;text-align:left"><p style="font-size:64px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">CS259 Discussion 1</p></div></div><div class="el sh a fx-up" data-s="0" style="--d:0.5s;left:67.2px;top:290px;width:825.6px;height:47px;"><div class="tx" style="inset:9.6px;justify-content:flex-start;text-align:left"><p style="font-size:21.33px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">Presented by Jane Doe and John Smith</p></div></div></section>
+<section class="slide" style="background:#fff" data-i="topic" data-steps="2"><div class="el sh a fx-down" data-s="0" style="--d:0s;left:48px;top:28.8px;width:860px;height:67px;"><div class="tx" style="inset:9.6px;justify-content:flex-start;text-align:left"><p style="font-size:42.67px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">Today’s Topic</p></div></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:48px;top:112px;width:140px;height:40px;"><div class="tx" style="inset:0px;justify-content:center;text-align:left"><p style="font-size:17px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;font-style:italic">So far</p></div></div><div class="el sh a fx-up" data-s="0" style="--d:0.1s;left:160px;top:112px;width:150px;height:40px;background:#eceef1;border-radius:4px"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif">read text</p></div></div><div class="el sh a fx-up" data-s="0" style="--d:0.2s;left:330px;top:112px;width:150px;height:40px;background:#eceef1;border-radius:4px"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif">write text</p></div></div><div class="el sh a fx-up" data-s="0" style="--d:0.3s;left:500px;top:112px;width:150px;height:40px;background:#eceef1;border-radius:4px"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif">call tools</p></div></div><div class="el sh a fx-fade" data-s="0" style="--d:0.5s;left:670px;top:112px;width:242px;height:40px;"><div class="tx" style="inset:0px;justify-content:center;text-align:left"><p style="font-size:15px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">text in, text out</p></div></div><div class="el sh a fx-growx" data-s="1" style="--d:0s;left:48px;top:196px;width:864px;height:2px;background:#3b5b7a"></div><div class="el sh a fx-up" data-s="1" style="--d:0.15s;left:48px;top:216px;width:864px;height:150px;"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:50px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;line-height:1.25">How do agents work with<br><b style="font-weight:700">2D images</b> and <b style="font-weight:700">3D scenes</b>?</p></div></div><div class="el sh a fx-growx" data-s="1" style="--d:0.1s;left:48px;top:384px;width:864px;height:2px;background:#3b5b7a"></div><div class="el sh a fx-fade" data-s="2" style="--d:0s;left:48px;top:412px;width:864px;height:44px;"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:22px;color:#4f7d5c;font-family:'Times New Roman', Tinos, Times, serif;font-style:italic">Spoiler: both come down to the same thing</p></div></div><div class="pnum">1</div></section>
+<section class="slide" style="background:#fff" data-i="pixels" data-steps="3"><div class="el sh a fx-down" data-s="0" style="--d:0s;left:48px;top:28.8px;width:860px;height:67px;"><div class="tx" style="inset:9.6px;justify-content:flex-start;text-align:left"><p style="font-size:42.67px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">From Text to Pixels</p></div></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:462px;top:98px;width:112px;height:18px;"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:12.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;font-style:italic">observation</p></div></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:48px;top:118px;width:110px;height:52px;"><div class="tx" style="inset:0px;justify-content:center;text-align:left"><p style="font-size:16px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">Text agent</p></div></div><div class="el sh a fx-fade" data-s="1" style="--d:0s;left:48px;top:208px;width:110px;height:52px;"><div class="tx" style="inset:0px;justify-content:center;text-align:left"><p style="font-size:16px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">2D agent</p></div></div><div class="el sh a fx-fade" data-s="2" style="--d:0s;left:48px;top:298px;width:110px;height:52px;"><div class="tx" style="inset:0px;justify-content:center;text-align:left"><p style="font-size:16px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">3D agent</p></div></div><div class="el sh a fx-up" data-s="0" style="--d:0s;left:462px;top:118px;width:112px;height:52px;background:#eceef1;border-radius:4px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">Text</p><p style="font-size:13.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">prompt, files</p></div></div><div class="el sh a fx-up" data-s="0" style="--d:0s;left:608px;top:118px;width:112px;height:52px;background:#3b5b7a;border-radius:4px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#fff;font-family:'Times New Roman', Tinos, Times, serif;">LLM</p></div></div><div class="el sh a fx-up" data-s="0" style="--d:0s;left:754px;top:118px;width:112px;height:52px;background:#eceef1;border-radius:4px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">Text</p><p style="font-size:13.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">answer, tool call</p></div></div><div class="el sh a fx-up" data-s="1" style="--d:0s;left:462px;top:208px;width:112px;height:52px;background:#e1e8f0;border-radius:4px;border:1.5px solid #3b5b7a"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">Image</p><p style="font-size:13.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">photo, screenshot</p></div></div><div class="el sh a fx-up" data-s="1" style="--d:0.1s;left:608px;top:208px;width:112px;height:52px;background:#3b5b7a;border-radius:4px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#fff;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">VLM</p><p style="font-size:13.5px;color:#c9d6e3;font-family:'Times New Roman', Tinos, Times, serif;">vision + LLM</p></div></div><div class="el sh a fx-up" data-s="1" style="--d:0.2s;left:754px;top:208px;width:112px;height:52px;background:#eceef1;border-radius:4px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">Action</p><p style="font-size:13.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">click, code, edit</p></div></div><div class="el sh a fx-up" data-s="2" style="--d:0s;left:170px;top:298px;width:112px;height:52px;background:#eceef1;border-radius:4px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">3D scene</p><p style="font-size:13.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">mesh, Blender file</p></div></div><div class="el sh a fx-up" data-s="2" style="--d:0.1s;left:316px;top:298px;width:112px;height:52px;background:#eceef1;border-radius:4px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">Render</p><p style="font-size:13.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">camera views</p></div></div><div class="el sh a fx-up" data-s="2" style="--d:0.2s;left:462px;top:298px;width:112px;height:52px;background:#e1e8f0;border-radius:4px;border:1.5px solid #3b5b7a"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;">2D images</p></div></div><div class="el sh a fx-up" data-s="2" style="--d:0.3s;left:608px;top:298px;width:112px;height:52px;background:#3b5b7a;border-radius:4px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#fff;font-family:'Times New Roman', Tinos, Times, serif;">VLM</p></div></div><div class="el sh a fx-up" data-s="2" style="--d:0.4s;left:754px;top:298px;width:112px;height:52px;background:#eceef1;border-radius:4px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">Action</p><p style="font-size:13.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">edit the scene</p></div></div><div class="el sh a fx-pop" data-s="3" style="--d:0s;left:456px;top:196px;width:124px;height:166px;border:2px dashed #3b5b7a;border-radius:6px"></div><div class="el sh a fx-up" data-s="3" style="--d:0s;left:48px;top:420px;width:864px;height:64px;background:#e1e8f0;border-radius:3px;border-left:4px solid #3b5b7a"><div class="tx" style="inset:10px;justify-content:center;text-align:left"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;">3D only reaches the model after rendering, so everything comes down to one question: <b>how does an agent read and act on a 2D image?</b></p></div></div><svg class="lines" viewBox="0 0 960 540"><defs><marker id="m1" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#5f6b7a"/></marker><marker id="m1a" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#3b5b7a"/></marker><marker id="m1g" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#4f7d5c"/></marker></defs><line class="a fx-fade" data-s="0" style="--d:0.15s" x1="576" y1="144.0" x2="605" y2="144.0" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m1)"/><line class="a fx-fade" data-s="0" style="--d:0.25s" x1="722" y1="144.0" x2="751" y2="144.0" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m1)"/><line class="a fx-fade" data-s="1" style="--d:0.15s" x1="576" y1="234.0" x2="605" y2="234.0" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m1)"/><line class="a fx-fade" data-s="1" style="--d:0.25s" x1="722" y1="234.0" x2="751" y2="234.0" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m1)"/><line class="a fx-fade" data-s="2" style="--d:0.15s" x1="576" y1="324.0" x2="605" y2="324.0" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m1)"/><line class="a fx-fade" data-s="2" style="--d:0.25s" x1="722" y1="324.0" x2="751" y2="324.0" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m1)"/><line class="a fx-fade" data-s="2" style="--d:0.15s" x1="284" y1="324" x2="313" y2="324" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m1)"/><line class="a fx-fade" data-s="2" style="--d:0.25s" x1="430" y1="324" x2="459" y2="324" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m1)"/><path class="a fx-draw" data-s="2" style="--d:0.5s" pathLength="1" d="M810,350 L810,378 L226,378 L226,356" fill="none" stroke="#4f7d5c" stroke-width="1.6" stroke-dasharray="1" marker-end="url(#m1g)"/><text class="a fx-fade" data-s="2" style="--d:0.8s" x="462" y="396" fill="#4f7d5c" font-size="13" font-family="'Times New Roman', Tinos, Times, serif" text-anchor="middle">act on the scene, render again</text></svg><div class="pnum">2</div></section>
+<section class="slide" style="background:#fff" data-i="tokens" data-steps="5"><div class="el sh a fx-down" data-s="0" style="--d:0s;left:48px;top:28.8px;width:860px;height:67px;"><div class="tx" style="inset:9.6px;justify-content:flex-start;text-align:left"><p style="font-size:42.67px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">How a Model Reads an Image</p></div></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:48px;top:112px;width:30px;height:30px;background:#cfe0ef"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:78px;top:112px;width:30px;height:30px;background:#cfe0ef"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:108px;top:112px;width:30px;height:30px;background:#cfe0ef"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:138px;top:112px;width:30px;height:30px;background:#cfe0ef"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:168px;top:112px;width:30px;height:30px;background:#f5c542"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:198px;top:112px;width:30px;height:30px;background:#cfe0ef"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:48px;top:142px;width:30px;height:30px;background:#cfe0ef"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:78px;top:142px;width:30px;height:30px;background:#cfe0ef"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:108px;top:142px;width:30px;height:30px;background:#cfe0ef"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:138px;top:142px;width:30px;height:30px;background:#cfe0ef"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:168px;top:142px;width:30px;height:30px;background:#cfe0ef"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:198px;top:142px;width:30px;height:30px;background:#cfe0ef"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:48px;top:172px;width:30px;height:30px;background:#cfe0ef"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:78px;top:172px;width:30px;height:30px;background:#a9c3b1"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:108px;top:172px;width:30px;height:30px;background:#cfe0ef"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:138px;top:172px;width:30px;height:30px;background:#cfe0ef"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:168px;top:172px;width:30px;height:30px;background:#cfe0ef"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:198px;top:172px;width:30px;height:30px;background:#cfe0ef"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:48px;top:202px;width:30px;height:30px;background:#a9c3b1"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:78px;top:202px;width:30px;height:30px;background:#a9c3b1"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:108px;top:202px;width:30px;height:30px;background:#a9c3b1"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:138px;top:202px;width:30px;height:30px;background:#cfe0ef"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:168px;top:202px;width:30px;height:30px;background:#cfe0ef"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:198px;top:202px;width:30px;height:30px;background:#a9c3b1"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:48px;top:232px;width:30px;height:30px;background:#4f7d5c"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:78px;top:232px;width:30px;height:30px;background:#4f7d5c"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:108px;top:232px;width:30px;height:30px;background:#4f7d5c"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:138px;top:232px;width:30px;height:30px;background:#4f7d5c"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:168px;top:232px;width:30px;height:30px;background:#4f7d5c"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:198px;top:232px;width:30px;height:30px;background:#4f7d5c"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:48px;top:262px;width:30px;height:30px;background:#8a6f4e"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:78px;top:262px;width:30px;height:30px;background:#8a6f4e"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:108px;top:262px;width:30px;height:30px;background:#8a6f4e"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:138px;top:262px;width:30px;height:30px;background:#8a6f4e"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:168px;top:262px;width:30px;height:30px;background:#8a6f4e"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:198px;top:262px;width:30px;height:30px;background:#8a6f4e"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:48px;top:298px;width:180px;height:20px;"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:13px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;font-style:italic">input image</p></div></div><div class="el sh a fx-left" data-s="2" style="--d:0s;left:268px;top:112px;width:160px;height:62px;background:#eceef1;border-radius:4px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">Vision encoder</p><p style="font-size:13.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">ViT, patch → vector</p></div></div><div class="el sh a fx-left" data-s="3" style="--d:0s;left:268px;top:210px;width:160px;height:62px;background:#eceef1;border-radius:4px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">Projector</p><p style="font-size:13.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">small MLP</p></div></div><div class="el sh a fx-down" data-s="3" style="--d:0.3s;left:48px;top:340px;width:34px;height:32px;background:#3b5b7a"></div><div class="el sh a fx-down" data-s="3" style="--d:0.35s;left:88px;top:340px;width:34px;height:32px;background:#3b5b7a"></div><div class="el sh a fx-down" data-s="3" style="--d:0.4s;left:128px;top:340px;width:34px;height:32px;background:#3b5b7a"></div><div class="el sh a fx-down" data-s="3" style="--d:0.45s;left:168px;top:340px;width:34px;height:32px;background:#3b5b7a"></div><div class="el sh a fx-down" data-s="3" style="--d:0.5s;left:208px;top:340px;width:34px;height:32px;background:#3b5b7a"></div><div class="el sh a fx-down" data-s="3" style="--d:0.55s;left:248px;top:340px;width:34px;height:32px;background:#3b5b7a"></div><div class="el sh a fx-down" data-s="4" style="--d:0.0s;left:296px;top:340px;width:52px;height:32px;background:#eceef1"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">What</p></div></div><div class="el sh a fx-down" data-s="4" style="--d:0.05s;left:354px;top:340px;width:30px;height:32px;background:#eceef1"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">is</p></div></div><div class="el sh a fx-down" data-s="4" style="--d:0.1s;left:390px;top:340px;width:30px;height:32px;background:#eceef1"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">in</p></div></div><div class="el sh a fx-down" data-s="4" style="--d:0.15000000000000002s;left:426px;top:340px;width:52px;height:32px;background:#eceef1"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">the</p></div></div><div class="el sh a fx-down" data-s="4" style="--d:0.2s;left:484px;top:340px;width:52px;height:32px;background:#eceef1"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">image</p></div></div><div class="el sh a fx-down" data-s="4" style="--d:0.25s;left:542px;top:340px;width:30px;height:32px;background:#eceef1"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">?</p></div></div><div class="el sh a fx-fade" data-s="3" style="--d:0.6s;left:48px;top:376px;width:234px;height:18px;"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:12.5px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;font-style:italic">visual tokens</p></div></div><div class="el sh a fx-fade" data-s="4" style="--d:0s;left:296px;top:376px;width:300px;height:18px;"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:12.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;font-style:italic">text tokens</p></div></div><div class="el sh a fx-up" data-s="4" style="--d:0.3s;left:48px;top:418px;width:548px;height:44px;background:#3b5b7a;border-radius:4px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#fff;font-family:'Times New Roman', Tinos, Times, serif;">The same LLM as for text, attending over both</p></div></div><div class="el sh a fx-left" data-s="1" style="--d:0.1s;left:636px;top:104px;width:276px;height:50px;"><div class="tx" style="inset:0px;justify-content:flex-start;text-align:left"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">1&nbsp;&nbsp;Patchify</p><p style="font-size:13.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">Cut the image into small squares, 14 to 16 px each</p></div></div><div class="el sh a fx-left" data-s="2" style="--d:0.1s;left:636px;top:162px;width:276px;height:50px;"><div class="tx" style="inset:0px;justify-content:flex-start;text-align:left"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">2&nbsp;&nbsp;Encode</p><p style="font-size:13.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">A vision transformer turns each patch into a vector</p></div></div><div class="el sh a fx-left" data-s="3" style="--d:0.1s;left:636px;top:220px;width:276px;height:66px;"><div class="tx" style="inset:0px;justify-content:flex-start;text-align:left"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">3&nbsp;&nbsp;Project</p><p style="font-size:13.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">A small network maps those vectors into the LLM’s token space</p></div></div><div class="el sh a fx-left" data-s="4" style="--d:0.1s;left:636px;top:294px;width:276px;height:50px;"><div class="tx" style="inset:0px;justify-content:flex-start;text-align:left"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">4&nbsp;&nbsp;Interleave</p><p style="font-size:13.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">Visual tokens sit next to text tokens in one sequence</p></div></div><div class="el sh a fx-up" data-s="5" style="--d:0.2s;left:636px;top:364px;width:276px;height:112px;background:#e1e8f0;border-radius:4px"><div class="tx" style="inset:10px;justify-content:flex-start;text-align:left"><p style="font-size:16px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:4px">An image is a long token sequence</p><p style="font-size:13.5px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">Claude: about width × height / 750 tokens</p><p style="font-size:13.5px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;margin-top:3px">1000 × 1000 px ≈ 1,300 tokens, about a page of text</p><p style="font-size:12.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-top:6px;font-style:italic">More pixels, more tokens, more cost</p></div></div><svg class="lines" viewBox="0 0 960 540"><defs><marker id="m2" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#5f6b7a"/></marker><marker id="m2a" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#3b5b7a"/></marker><marker id="m2g" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#4f7d5c"/></marker></defs><line class="a fx-fade" data-s="1" style="--d:0.04s" x1="78" y1="112" x2="78" y2="292" stroke="#fff" stroke-width="2"/><line class="a fx-fade" data-s="1" style="--d:0.04s" x1="48" y1="142" x2="228" y2="142" stroke="#fff" stroke-width="2"/><line class="a fx-fade" data-s="1" style="--d:0.08s" x1="108" y1="112" x2="108" y2="292" stroke="#fff" stroke-width="2"/><line class="a fx-fade" data-s="1" style="--d:0.08s" x1="48" y1="172" x2="228" y2="172" stroke="#fff" stroke-width="2"/><line class="a fx-fade" data-s="1" style="--d:0.12s" x1="138" y1="112" x2="138" y2="292" stroke="#fff" stroke-width="2"/><line class="a fx-fade" data-s="1" style="--d:0.12s" x1="48" y1="202" x2="228" y2="202" stroke="#fff" stroke-width="2"/><line class="a fx-fade" data-s="1" style="--d:0.16s" x1="168" y1="112" x2="168" y2="292" stroke="#fff" stroke-width="2"/><line class="a fx-fade" data-s="1" style="--d:0.16s" x1="48" y1="232" x2="228" y2="232" stroke="#fff" stroke-width="2"/><line class="a fx-fade" data-s="1" style="--d:0.2s" x1="198" y1="112" x2="198" y2="292" stroke="#fff" stroke-width="2"/><line class="a fx-fade" data-s="1" style="--d:0.2s" x1="48" y1="262" x2="228" y2="262" stroke="#fff" stroke-width="2"/><rect class="a fx-pop" data-s="1" style="--d:.3s" x="168" y="112" width="30" height="30" fill="none" stroke="#b5523b" stroke-width="2"/><text class="a fx-fade" data-s="1" style="--d:0.4s" x="183" y="106" fill="#b5523b" font-size="12" font-family="'Times New Roman', Tinos, Times, serif" text-anchor="middle">one patch</text><line class="a fx-fade" data-s="2" style="--d:0s" x1="230" y1="143" x2="265" y2="143" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m2)"/><line class="a fx-fade" data-s="3" style="--d:0s" x1="348" y1="176" x2="348" y2="207" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m2)"/><path class="a fx-draw" data-s="3" style="--d:0.2s" pathLength="1" d="M348,274 Q348,305 170,337" fill="none" stroke="#5f6b7a" stroke-width="1.3" stroke-dasharray="1" marker-end="url(#m2)"/><line class="a fx-fade" data-s="4" style="--d:0.2s" x1="165" y1="396" x2="165" y2="415" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m2)"/><line class="a fx-fade" data-s="4" style="--d:0.2s" x1="440" y1="396" x2="440" y2="415" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m2)"/></svg><div class="pnum">3</div></section>
+<section class="slide" style="background:#fff" data-i="act" data-steps="8"><div class="el sh a fx-down" data-s="0" style="--d:0s;left:48px;top:28.8px;width:860px;height:67px;"><div class="tx" style="inset:9.6px;justify-content:flex-start;text-align:left"><p style="font-size:42.67px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">Acting on an Image</p></div></div><div class="el sh a fx-up" data-s="1" style="--d:0s;left:150px;top:106px;width:160px;height:54px;background:#eceef1;border-radius:4px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">Observe</p><p style="font-size:13.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">take a screenshot</p></div></div><div class="el sh a fx-up" data-s="2" style="--d:0.35s;left:300px;top:196px;width:160px;height:54px;background:#3b5b7a;border-radius:4px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#fff;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">Think</p><p style="font-size:13.5px;color:#c9d6e3;font-family:'Times New Roman', Tinos, Times, serif;">VLM reasons</p></div></div><div class="el sh a fx-up" data-s="3" style="--d:0.35s;left:150px;top:286px;width:160px;height:54px;background:#eceef1;border-radius:4px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">Act</p><p style="font-size:13.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">click, type, scroll</p></div></div><div class="el sh a fx-up" data-s="4" style="--d:0.35s;left:48px;top:196px;width:120px;height:54px;background:#eceef1;border-radius:4px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:15px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">Environment</p><p style="font-size:13.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">screen changes</p></div></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:500px;top:104px;width:412px;height:236px;background:#fff;border:1.5px solid #c5cbd3;border-radius:6px"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:500px;top:104px;width:412px;height:24px;background:#eceef1;border-radius:6px 6px 0 0"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:510px;top:112px;width:8px;height:8px;background:#e06c5a;border-radius:50%"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:524px;top:112px;width:8px;height:8px;background:#f5c542;border-radius:50%"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:538px;top:112px;width:8px;height:8px;background:#7fb685;border-radius:50%"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:524px;top:144px;width:200px;height:16px;"><div class="tx" style="inset:0px;justify-content:center;text-align:left"><p style="font-size:15px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">Sign up for the workshop</p></div></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:524px;top:176px;width:230px;height:28px;border:1px solid #c5cbd3;border-radius:3px"><div class="tx" style="inset:0px;justify-content:center;text-align:left"><p style="font-size:13px;color:#9aa3ae;font-family:'Times New Roman', Tinos, Times, serif;">&nbsp;Email</p></div></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:524px;top:214px;width:230px;height:28px;border:1px solid #c5cbd3;border-radius:3px"><div class="tx" style="inset:0px;justify-content:center;text-align:left"><p style="font-size:13px;color:#9aa3ae;font-family:'Times New Roman', Tinos, Times, serif;">&nbsp;Name</p></div></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:524px;top:256px;width:300px;height:8px;background:#eceef1"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:524px;top:270px;width:250px;height:8px;background:#eceef1"></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:524px;top:296px;width:96px;height:30px;background:#3b5b7a;border-radius:4px"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:14px;color:#fff;font-family:'Times New Roman', Tinos, Times, serif;">Submit</p></div></div><div class="el sh a fx-fade" data-s="0" style="--d:0s;left:790px;top:296px;width:98px;height:30px;"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:13px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;text-decoration:underline">Help</p></div></div><div class="el sh a fx-pop" data-s="7" style="--d:0.0s;left:758px;top:180px;width:20px;height:20px;background:#b5523b;border-radius:3px"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:12px;color:#fff;font-family:'Times New Roman', Tinos, Times, serif;font-weight:700">1</p></div></div><div class="el sh a fx-pop" data-s="7" style="--d:0.08s;left:758px;top:218px;width:20px;height:20px;background:#b5523b;border-radius:3px"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:12px;color:#fff;font-family:'Times New Roman', Tinos, Times, serif;font-weight:700">2</p></div></div><div class="el sh a fx-pop" data-s="7" style="--d:0.16s;left:504px;top:300px;width:20px;height:20px;background:#b5523b;border-radius:3px"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:12px;color:#fff;font-family:'Times New Roman', Tinos, Times, serif;font-weight:700">3</p></div></div><div class="el sh a fx-pop" data-s="7" style="--d:0.24s;left:886px;top:300px;width:20px;height:20px;background:#b5523b;border-radius:3px"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:12px;color:#fff;font-family:'Times New Roman', Tinos, Times, serif;font-weight:700">4</p></div></div><div class="el sh a fx-pop" data-s="8" style="--d:0s;left:780px;top:134px;width:124px;height:52px;background:#fff;border:2px solid #4f7d5c;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.15)"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:11.5px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">Sign up for the workshop</p></div></div><div class="el sh a fx-up" data-s="6" style="--d:0s;left:48px;top:360px;width:280px;height:120px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:12px;justify-content:flex-start;text-align:left"><p style="font-size:18px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:6px">Pixel coordinates</p><p style="font-size:14.5px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;line-height:1.35">The model writes <i>click(572, 311)</i> directly. Used by Claude computer use and OpenAI’s CUA.</p></div></div><div class="el sh a fx-up" data-s="7" style="--d:0s;left:340px;top:360px;width:280px;height:120px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:12px;justify-content:flex-start;text-align:left"><p style="font-size:18px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:6px">Set-of-Mark</p><p style="font-size:14.5px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;line-height:1.35">A tool draws numbered tags on the screenshot. The model only has to say “click 3”.</p></div></div><div class="el sh a fx-up" data-s="8" style="--d:0s;left:632px;top:360px;width:280px;height:120px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:12px;justify-content:flex-start;text-align:left"><p style="font-size:18px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:6px">Zoom and look again</p><p style="font-size:14.5px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;line-height:1.35">Crop and zoom tools let the model re-read small details at full resolution.</p></div></div><svg class="lines" viewBox="0 0 960 540"><defs><marker id="m3" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#5f6b7a"/></marker><marker id="m3a" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#3b5b7a"/></marker><marker id="m3g" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#4f7d5c"/></marker></defs><path class="a fx-draw" data-s="2" style="--d:0s" pathLength="1" d="M312,134 Q378,140 380,192" fill="none" stroke="#3b5b7a" stroke-width="1.6" stroke-dasharray="1" marker-end="url(#m3a)"/><path class="a fx-draw" data-s="3" style="--d:0s" pathLength="1" d="M380,252 Q378,308 314,312" fill="none" stroke="#3b5b7a" stroke-width="1.6" stroke-dasharray="1" marker-end="url(#m3a)"/><path class="a fx-draw" data-s="4" style="--d:0s" pathLength="1" d="M148,312 Q108,308 108,254" fill="none" stroke="#3b5b7a" stroke-width="1.6" stroke-dasharray="1" marker-end="url(#m3a)"/><path class="a fx-draw" data-s="5" style="--d:0s" pathLength="1" d="M108,194 Q108,136 146,134" fill="none" stroke="#3b5b7a" stroke-width="1.6" stroke-dasharray="1" marker-end="url(#m3a)"/><g class="a fx-pop" data-s="6"><circle cx="572" cy="311" r="12" fill="none" stroke="#b5523b" stroke-width="2"/><line x1="554" y1="311" x2="590" y2="311" stroke="#b5523b" stroke-width="1.5"/><line x1="572" y1="293" x2="572" y2="329" stroke="#b5523b" stroke-width="1.5"/></g><text class="a fx-fade" data-s="6" style="--d:0.2s" x="642" y="315" fill="#b5523b" font-size="13" font-family="'Times New Roman', Tinos, Times, serif" text-anchor="start">click(572, 311)</text><rect class="a fx-fade" data-s="8" x="522" y="140" width="190" height="24" fill="none" stroke="#4f7d5c" stroke-width="1.5" stroke-dasharray="4 3"/><text class="a fx-fade" data-s="5" style="--d:.5s" x="229" y="218" fill="#4f7d5c" font-size="14" font-family="'Times New Roman', Tinos, Times, serif" text-anchor="middle" font-style="italic">new screenshot:</text><text class="a fx-fade" data-s="5" style="--d:.6s" x="229" y="236" fill="#4f7d5c" font-size="14" font-family="'Times New Roman', Tinos, Times, serif" text-anchor="middle" font-style="italic">did it work?</text></svg><div class="pnum">4</div></section>
+<section class="slide" style="background:#fff" data-i="render" data-steps="5"><div class="el sh a fx-down" data-s="0" style="--d:0s;left:48px;top:28.8px;width:860px;height:67px;"><div class="tx" style="inset:9.6px;justify-content:flex-start;text-align:left"><p style="font-size:42.67px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">3D: The Agent Works Through Renders</p></div></div><div class="el sh a fx-up" data-s="1" style="--d:0s;left:48px;top:108px;width:150px;height:96px;background:#eceef1;border-radius:4px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">Goal</p><p style="font-size:13.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">“a red chair next to a wooden table”</p></div></div><div class="el sh a fx-up" data-s="1" style="--d:0.15s;left:228px;top:108px;width:236px;height:96px;background:#eceef1;border-radius:4px;border-left:3px solid #3b5b7a"><div class="tx" style="inset:8px;justify-content:flex-start;text-align:left"><p style="font-size:11px;line-height:1.6;color:#1f2933;font-family:Menlo, Consolas, 'Courier New', monospace;margin:0"><span style="color:#9aa3ae"># Blender Python</span><br>chair.location = <span style="color:#b5523b">(1.2, 0, 0.4)</span><br>chair.rotation_euler.z = <span style="color:#b5523b">3.14</span><br>red.diffuse_color = <span style="color:#b5523b">(.8,.1,.1,1)</span></p></div></div><div class="el sh a fx-fade" data-s="1" style="--d:0.3s;left:354px;top:208px;width:110px;height:18px;"><div class="tx" style="inset:0px;justify-content:center;text-align:right"><p style="font-size:12.5px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;font-style:italic">agent writes code</p></div></div><div class="el sh a fx-up" data-s="2" style="--d:0s;left:494px;top:132px;width:100px;height:50px;background:#3b5b7a;border-radius:4px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#fff;font-family:'Times New Roman', Tinos, Times, serif;">Render</p></div></div><div class="el sh a fx-up" data-s="2" style="--d:0.15s;left:624px;top:108px;width:88px;height:88px;background:#f6f7f9;border:1px solid #c5cbd3;border-radius:3px"></div><div class="el sh a fx-fade" data-s="2" style="--d:0.3s;left:624px;top:198px;width:88px;height:16px;"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:12px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;font-style:italic">front</p></div></div><div class="el sh a fx-up" data-s="2" style="--d:0.25s;left:722px;top:108px;width:88px;height:88px;background:#f6f7f9;border:1px solid #c5cbd3;border-radius:3px"></div><div class="el sh a fx-fade" data-s="2" style="--d:0.4s;left:722px;top:198px;width:88px;height:16px;"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:12px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;font-style:italic">side</p></div></div><div class="el sh a fx-up" data-s="2" style="--d:0.35s;left:820px;top:108px;width:88px;height:88px;background:#f6f7f9;border:1px solid #c5cbd3;border-radius:3px"></div><div class="el sh a fx-fade" data-s="2" style="--d:0.5s;left:820px;top:198px;width:88px;height:16px;"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:12px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;font-style:italic">top</p></div></div><div class="el sh a fx-up" data-s="3" style="--d:0s;left:624px;top:238px;width:284px;height:62px;background:#e1e8f0;border-radius:4px;border:1.5px solid #3b5b7a"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:2px">VLM critic</p><p style="font-size:13px;color:#5f6b7a;font-family:'Times New Roman', Tinos, Times, serif;">“The chair floats above the floor and faces the wall”</p></div></div><div class="el sh a fx-up" data-s="4" style="--d:0s;left:48px;top:336px;width:280px;height:100px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:12px;justify-content:flex-start;text-align:left"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:6px">SceneCraft <span style="font-size:13px;color:#5f6b7a">ICML 2024</span></p><p style="font-size:14px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;line-height:1.35">Text → Blender scene. A VLM critiques the renders and the agent revises the code.</p></div></div><div class="el sh a fx-up" data-s="4" style="--d:0.12s;left:340px;top:336px;width:280px;height:100px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:12px;justify-content:flex-start;text-align:left"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:6px">BlenderAlchemy <span style="font-size:13px;color:#5f6b7a">ECCV 2024</span></p><p style="font-size:14px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;line-height:1.35">Edits materials and shapes in a Blender program, keeping the edit whose render fits best.</p></div></div><div class="el sh a fx-up" data-s="4" style="--d:0.24s;left:632px;top:336px;width:280px;height:100px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:12px;justify-content:flex-start;text-align:left"><p style="font-size:17px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;margin-bottom:6px">BlenderGym <span style="font-size:13px;color:#5f6b7a">CVPR 2025</span></p><p style="font-size:14px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;line-height:1.35">A benchmark of 3D editing tasks. VLM agents still trail human Blender users.</p></div></div><div class="el sh a fx-up" data-s="5" style="--d:0s;left:48px;top:448px;width:864px;height:40px;background:#e1e8f0;border-radius:3px;border-left:4px solid #3b5b7a"><div class="tx" style="inset:10px;justify-content:center;text-align:left"><p style="font-size:16px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;">Several views recover what one image hides: depth, occlusion and the back side</p></div></div><svg class="lines" viewBox="0 0 960 540"><defs><marker id="m4" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#5f6b7a"/></marker><marker id="m4a" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#3b5b7a"/></marker><marker id="m4g" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#4f7d5c"/></marker></defs><line class="a fx-fade" data-s="1" style="--d:0.2s" x1="200" y1="156" x2="225" y2="156" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m4)"/><line class="a fx-fade" data-s="2" style="--d:0s" x1="466" y1="157" x2="491" y2="157" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m4)"/><line class="a fx-fade" data-s="2" style="--d:0.1s" x1="596" y1="157" x2="621" y2="157" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m4)"/><g class="a fx-fade" data-s="2" style="--d:.3s"><rect x="634" y="154" width="40" height="6" fill="#8a6f4e"/><rect x="637" y="160" width="4" height="22" fill="#8a6f4e"/><rect x="667" y="160" width="4" height="22" fill="#8a6f4e"/><rect x="682" y="148" width="18" height="18" fill="#b5523b"/><rect x="684" y="166" width="3" height="10" fill="#b5523b"/><rect x="695" y="166" width="3" height="10" fill="#b5523b"/><line x1="630" y1="182" x2="706" y2="182" stroke="#c5cbd3"/></g><g class="a fx-fade" data-s="2" style="--d:.4s"><rect x="740" y="154" width="52" height="6" fill="#8a6f4e"/><rect x="744" y="160" width="4" height="22" fill="#8a6f4e"/><rect x="784" y="160" width="4" height="22" fill="#8a6f4e"/><rect x="756" y="148" width="18" height="18" fill="#b5523b" opacity=".85"/><line x1="728" y1="182" x2="804" y2="182" stroke="#c5cbd3"/></g><g class="a fx-fade" data-s="2" style="--d:.5s"><rect x="832" y="134" width="40" height="36" fill="#8a6f4e"/><rect x="878" y="142" width="18" height="18" fill="#b5523b"/></g><line class="a fx-fade" data-s="3" style="--d:0s" x1="766" y1="216" x2="766" y2="235" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m4)"/><path class="a fx-draw" data-s="3" style="--d:0.3s" pathLength="1" d="M622,270 L346,270 L346,208" fill="none" stroke="#4f7d5c" stroke-width="1.6" stroke-dasharray="1" marker-end="url(#m4g)"/><text class="a fx-fade" data-s="3" style="--d:0.6s" x="484" y="288" fill="#4f7d5c" font-size="13" font-family="'Times New Roman', Tinos, Times, serif" text-anchor="middle">revise the code, render again</text></svg><div class="pnum">5</div></section>
+<section class="slide" style="background:#fff" data-i="discussions" data-steps="6"><div class="el sh a fx-down" data-s="0" style="--d:0s;left:48px;top:28.8px;width:860px;height:67px;"><div class="tx" style="inset:9.6px;justify-content:flex-start;text-align:left"><p style="font-size:42.67px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;">Discussions</p></div></div><div class="el sh a fx-growy" data-s="1" style="--d:0s;left:48px;top:108px;width:6px;height:54px;background:#3b5b7a"></div><div class="el sh a fx-left" data-s="1" style="--d:0.1s;left:68px;top:108px;width:844px;height:54px;"><div class="tx" style="inset:0px;justify-content:center;text-align:left"><p style="font-size:19px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;line-height:1.35"><b style="color:#3b5b7a;font-weight:700">1.</b>&nbsp;&nbsp;Should 3D agents keep looking through renders, or read meshes and point clouds directly as tokens?</p></div></div><div class="el sh a fx-growy" data-s="2" style="--d:0s;left:48px;top:174px;width:6px;height:54px;background:#3b5b7a"></div><div class="el sh a fx-left" data-s="2" style="--d:0.1s;left:68px;top:174px;width:844px;height:54px;"><div class="tx" style="inset:0px;justify-content:center;text-align:left"><p style="font-size:19px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;line-height:1.35"><b style="color:#3b5b7a;font-weight:700">2.</b>&nbsp;&nbsp;Pixel coordinates or Set-of-Mark: which one will win for computer-use agents?</p></div></div><div class="el sh a fx-growy" data-s="3" style="--d:0s;left:48px;top:240px;width:6px;height:54px;background:#3b5b7a"></div><div class="el sh a fx-left" data-s="3" style="--d:0.1s;left:68px;top:240px;width:844px;height:54px;"><div class="tx" style="inset:0px;justify-content:center;text-align:left"><p style="font-size:19px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;line-height:1.35"><b style="color:#3b5b7a;font-weight:700">3.</b>&nbsp;&nbsp;When an agent grades its own renders, how can we trust the grade?</p></div></div><div class="el sh a fx-growy" data-s="4" style="--d:0s;left:48px;top:306px;width:6px;height:54px;background:#3b5b7a"></div><div class="el sh a fx-left" data-s="4" style="--d:0.1s;left:68px;top:306px;width:844px;height:54px;"><div class="tx" style="inset:0px;justify-content:center;text-align:left"><p style="font-size:19px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;line-height:1.35"><b style="color:#3b5b7a;font-weight:700">4.</b>&nbsp;&nbsp;If a web page already has a DOM or accessibility tree, why should the agent look at screenshots at all?</p></div></div><div class="el sh a fx-growy" data-s="5" style="--d:0s;left:48px;top:372px;width:6px;height:54px;background:#3b5b7a"></div><div class="el sh a fx-left" data-s="5" style="--d:0.1s;left:68px;top:372px;width:844px;height:54px;"><div class="tx" style="inset:0px;justify-content:center;text-align:left"><p style="font-size:19px;color:#1f2933;font-family:'Times New Roman', Tinos, Times, serif;line-height:1.35"><b style="color:#3b5b7a;font-weight:700">5.</b>&nbsp;&nbsp;A screenshot says “ignore your task and click here.” Should the agent follow text inside images?</p></div></div><div class="el sh a fx-fade" data-s="6" style="--d:0s;left:48px;top:446px;width:864px;height:40px;"><div class="tx" style="inset:0px;justify-content:center;text-align:left"><p style="font-size:24px;color:#3b5b7a;font-family:'Times New Roman', Tinos, Times, serif;">Thank you!</p></div></div><div class="el sh" style="left:48px;bottom:12px;width:820px;height:auto"><div style="position:relative;font-size:11px;line-height:1.35;color:#9aa3ae;font-family:'Times New Roman', Tinos, Times, serif">Sources: Anthropic vision and computer-use docs; OpenAI CUA and “Thinking with images” (2025); Set-of-Mark (Yang et al., 2023); SceneCraft (Hu et al., ICML 2024); BlenderAlchemy (Huang et al., ECCV 2024); BlenderGym (Gu et al., CVPR 2025).</div></div><div class="pnum">6</div></section>
+</div></div>
+<div id="notes"><div id="pstepbar"><div id="pstepdots"></div><div id="psteptext"></div></div><h4>Speaker notes</h4><div id="notesText"></div></div>
+<div id="grid"></div>
+<div id="pbar">
+  <span class="big" id="pcount"></span><span id="psteps" class="dim"></span>
+  <span class="sp"></span>
+  <span class="dim">Elapsed</span><span class="big" id="ptimer" title="Click to reset">00:00</span>
+  <span class="dim">Clock</span><span class="big" id="pclock"></span>
+  <button id="pSmaller" title="Smaller notes">A−</button><button id="pBigger" title="Larger notes">A+</button>
+</div>
+<div id="pnext"><div id="pnextLab">Next</div><div id="pnextBox"></div></div>
+<div id="bar">
+  <button id="prev" title="Previous (←)" aria-label="Previous slide">‹</button>
+  <span id="count"></span>
+  <button id="next" title="Next (→)" aria-label="Next step">›</button>
+  <span id="steps" aria-hidden="true"></span>
+  <div id="prog"><i></i></div>
+  <span id="hint">← → step · Shift+← → slide · P presenter · N notes · G overview · A animation · F fullscreen</span>
+  <button id="bNotes" title="Speaker notes (N)">Notes</button>
+  <button id="bPres" title="Open or close the presenter view (P)">Presenter</button>
+  <button id="bGrid" title="Overview (G)">Grid</button>
+  <button id="bAnim" class="act" title="Animations on/off (A)">Anim</button>
+  <button id="bFs" title="Fullscreen (F)">⛶</button>
+</div>
+<script>
+const NOTES = ["Hi everyone, welcome to discussion 1.", "So far in this class we have mostly seen agents that work with text: they read text, write text and call tools. Text in, text out. ★ Today I want to ask one big question: how do agents work with 2D images and 3D scenes? ★ And I will argue that both come down to the same thing.", "Here is why. Start from the agent loop we already know. A text agent reads text, the LLM thinks, and it outputs text or a tool call. ★ A 2D agent is the same loop, except the observation is an image, like a photo or a screenshot, and the model is a vision-language model. Its action might be a click, some code, or an edit to the image. ★ A 3D agent cannot feed a mesh or a Blender file directly into the model. It places a camera, renders the scene into 2D images, and the VLM looks at those. Then it acts on the scene and renders again. ★ So in all of these cases, the thing the model actually sees is a 2D image. The key question is how an agent reads and acts on a 2D image.", "Let's open up the VLM. Take this tiny picture. ★ First, the image is cut into a grid of small patches, usually 14 or 16 pixels on a side. Each patch plays the role of a word. ★ A vision encoder, normally a vision transformer, turns each patch into a vector. ★ A small projector then maps those vectors into the same space as the LLM's word embeddings. Now they are visual tokens. ★ These visual tokens are placed right next to the text tokens, for example “What is in the image?”, and the same transformer we saw for text attends over all of them. ★ This also tells us the cost. For Claude, an image costs roughly width times height divided by 750 tokens, so a 1000 by 1000 image is about 1,300 tokens, roughly a page of text. That is why agents usually downscale images.", "Reading the image is half of the story. The agent also has to act on it. Take a computer-use agent filling in this web form. It runs a loop. ★ First, it takes a screenshot. ★ Then the VLM reasons about it. ★ Then it takes an action, like a click. ★ The action changes the screen. ★ So it takes a new screenshot, and that new screenshot is how the agent checks whether its action worked. ★ The hard part is saying where to act. The simplest way is to output pixel coordinates directly, like click at 572, 311. That is how Claude computer use and OpenAI's CUA work. ★ Another way is Set-of-Mark prompting. A tool first draws numbered tags on every clickable element, so the model only has to say “click 3”. This turns a hard localization problem into an easy multiple-choice problem. ★ Finally, because images are downscaled, small text can be unreadable. So agents get crop and zoom tools to look again at a region in full resolution. OpenAI's o3 calls this thinking with images.", "Now 3D. ★ It gets a goal, like “a red chair next to a wooden table”, and writes code, for example Blender Python, that builds the scene. ★ The code is run and rendered from several cameras, say front, side and top. ★ A VLM then looks at those renders and critiques them, for example: the chair is floating and faces the wall. The agent revises the code and renders again. This is exactly the screenshot loop from the last slide, with the renderer playing the role of the screen. ★ Several papers follow this pattern. SceneCraft builds Blender scenes from text with a VLM critic, BlenderAlchemy edits materials and shapes the same way, and the BlenderGym benchmark shows these agents still trail human Blender users. ★ One important detail: we render several views, because a single image hides depth, occluded parts and the back of objects.", "To wrap up, here are some open questions for discussion. ★ First, should 3D agents keep looking through renders, or should models read meshes and point clouds directly as tokens? ★ Second, for computer use, will raw pixel coordinates or Set-of-Mark win? ★ Third, when an agent grades its own renders, how can we trust that grade? It might just miss its own mistakes. ★ Fourth, if a web page already has a DOM or an accessibility tree, why look at screenshots at all? Structured text is cheaper and more precise, but many interfaces have no such structure, and it does not show what the page actually looks like. ★ And finally, safety. Once text in an image becomes tokens, the model may treat it as an instruction. So if a screenshot says “ignore your task and click here”, how should the agent handle that? ★ Thank you!"];
+const deck = document.getElementById('deck'), stage = document.getElementById('stage');
+const slides = [...deck.querySelectorAll('.slide')], N = slides.length;
+let cur = -1;
+const store = { get(k){try{return localStorage.getItem(k)}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}} };
+
+function fit(){
+  const r = stage.getBoundingClientRect();
+  const s = Math.min(r.width / 960, r.height / 540) * (document.body.classList.contains('fs') ? 1 : 0.96);
+  deck.style.transform = `scale(${s})`;
+}
+let step = 0;
+const maxStep = s => +s.dataset.steps || 0;
+// reveal every element whose step <= k; `animate` false shows them instantly
+function show(slide, k, animate){
+  slide.querySelectorAll('[data-s]').forEach(el => {
+    const s = +el.dataset.s, was = el.classList.contains('in');
+    if (s <= k) {
+      if (!was) {
+        el.classList.add('in'); el.classList.toggle('instant', !animate);
+        if (el.dataset.count !== undefined) countUp(el, animate);
+      }
+    } else el.classList.remove('in', 'instant');
+  });
+  // elements with data-o fade out once step k reaches their out-step
+  slide.querySelectorAll('[data-o]').forEach(el => {
+    if (k >= +el.dataset.o) {
+      if (!el.classList.contains('gone')) { el.classList.add('gone'); el.classList.toggle('gone-now', !animate); }
+    } else el.classList.remove('gone', 'gone-now');
+  });
+}
+// Keynote-style magic move: elements sharing a data-mm key glide from their old slide position to the new one
+function magicMove(from, to){
+  if (!from || from === to || noMotion()) return () => {};
+  const scale = deck.getBoundingClientRect().width / 960, old = {};
+  const visible = e => getComputedStyle(e).visibility !== 'hidden' && !e.classList.contains('gone');
+  from.querySelectorAll('[data-mm]').forEach(e => { if (visible(e)) old[e.dataset.mm] = e.getBoundingClientRect(); });
+  return () => to.querySelectorAll('[data-mm]').forEach(e => {
+    const a = old[e.dataset.mm];
+    if (!a || !visible(e)) return;
+    const b = e.getBoundingClientRect();
+    if (!b.width || !b.height) return;
+    const dx = (a.left - b.left) / scale, dy = (a.top - b.top) / scale, sx = a.width / b.width, sy = a.height / b.height;
+    if (Math.abs(dx) < .5 && Math.abs(dy) < .5 && Math.abs(sx - 1) < .01 && Math.abs(sy - 1) < .01) return;
+    e.animate([{transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`, transformOrigin: '0 0'},
+               {transform: 'none', transformOrigin: '0 0'}], {duration: 700, easing: 'cubic-bezier(.3, .7, .2, 1)'});
+  });
+}
+function go(i, atEnd){
+  i = Math.max(0, Math.min(N - 1, i));
+  const changed = i !== cur || !slides[i].classList.contains('on');
+  const glide = changed && cur >= 0 ? magicMove(slides[cur], slides[i]) : () => {};
+  cur = i;
+  if (changed) {
+    slides.forEach((s, k) => s.classList.toggle('on', k === cur));
+    slides[cur].querySelectorAll('[data-s]').forEach(el => el.classList.remove('in', 'instant'));
+    slides[cur].querySelectorAll('[data-o]').forEach(el => el.classList.remove('gone', 'gone-now'));
+    step = atEnd ? maxStep(slides[cur]) : 0;
+    show(slides[cur], step, false);  // page turns are instant; only key-press steps animate
+    glide();
+  }
+  if (atEnd && !changed) { step = maxStep(slides[cur]); show(slides[cur], step, false); }
+  if (atEnd) slides[cur].querySelectorAll('[data-s]').forEach(el => el.classList.add('instant'));
+  update();
+}
+function next(){
+  if (step < maxStep(slides[cur])) { step++; show(slides[cur], step, true); update(); }
+  else if (cur < N - 1) go(cur + 1);
+}
+function prev(){
+  if (step > 0) { step--; show(slides[cur], step, false); update(); }
+  else if (cur > 0) go(cur - 1, true);
+}
+function update(){
+  const m = maxStep(slides[cur]);
+  document.getElementById('count').textContent = `${cur + 1} / ${N}`;
+  document.getElementById('steps').innerHTML = m ? Array.from({length: m}, (_, k) => `<i class="${k < step ? 'on' : ''}"></i>`).join('') : '';
+  document.querySelector('#prog i').style.width = `${(cur + (m ? step / m : 1)) / N * 100}%`;
+  const nt = document.getElementById('notesText'), newSlide = cur !== update.lastSlide;
+  if (newSlide) {
+    // ★ marks a click: segment k is what to say after the k-th click on this slide
+    const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    nt.innerHTML = (NOTES[cur] || '').split('★').map((t, k) =>
+      (k ? `<b class="star" data-k="${k}">★${k}</b>` : '') + `<span class="seg" data-k="${k}">${esc(t.trim())}</span> `).join('');
+    document.getElementById('notes').scrollTop = 0;   // new slide: notes start at the top
+    update.lastSlide = cur;
+  }
+  nt.querySelectorAll('[data-k]').forEach(e => {
+    const k = +e.dataset.k;
+    e.classList.toggle('past', k < step); e.classList.toggle('cur', k === step); e.classList.toggle('future', k > step);
+  });
+  const curSeg = nt.querySelector('.seg.cur');
+  if (!newSlide && curSeg && curSeg.scrollIntoView) curSeg.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+  history.replaceState(null, '', '#' + (cur + 1));
+  renderPresenter();
+  send();
+  document.querySelectorAll('.thumb').forEach((t, k) => t.classList.toggle('cur', k === cur));
+}
+// count-up numbers (e.g. 65,536 / 4.0×), started after the element's own delay
+const noMotion = () => document.body.classList.contains('noanim') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+function countUp(el, animate){
+  const span = [...el.querySelectorAll('span, p')].find(s => /\d/.test(s.textContent) && !s.children.length);
+  if (!span) return;
+  if (!span.dataset.orig) span.dataset.orig = span.textContent;
+  const orig = span.dataset.orig, m = orig.match(/\d[\d,]*(\.\d+)?/);
+  const token = (span._tok = (span._tok || 0) + 1);
+  if (!m || !animate || noMotion()) { span.textContent = orig; return; }
+  const target = parseFloat(m[0].replace(/,/g, '')), dec = m[1] ? m[1].length - 1 : 0;
+  const comma = m[0].includes(','), pre = orig.slice(0, m.index), post = orig.slice(m.index + m[0].length);
+  const fmt = v => { let s = v.toFixed(dec); if (comma) s = Number(s).toLocaleString('en-US', {minimumFractionDigits: dec}); return pre + s + post; };
+  span.textContent = fmt(0);
+  setTimeout(() => {
+    const t0 = performance.now(), dur = 900;
+    const tick = now => {
+      if (span._tok !== token) return;
+      const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+      span.textContent = p < 1 ? fmt(target * e) : orig;
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    setTimeout(() => { if (span._tok === token) span.textContent = orig; }, dur + 200);
+  }, parseFloat(el.dataset.count) * 1000 + 150);
+}
+// ---- presenter view: a second window with notes, synced over postMessage ----
+const PRESENTER = new URLSearchParams(location.search).has('presenter');
+let peer = null, applying = false;
+function target(){ const t = PRESENTER ? window.opener : peer; return t && !t.closed ? t : null; }
+function send(){
+  if (applying) return;
+  const t = target(); if (t) try { t.postMessage({nsa: 'state', i: cur, k: step}, '*'); } catch (e) {}
+}
+function setState(i, k){
+  if (i !== cur) { go(i); if (k > 0) { step = k; show(slides[cur], k, false); update(); } }
+  else if (k !== step) { const anim = k === step + 1; step = k; show(slides[cur], k, anim); update(); }
+}
+window.addEventListener('message', e => {
+  const d = e.data; if (!d || !d.nsa) return;
+  if (!PRESENTER) peer = e.source;
+  if (d.nsa === 'hello') send();
+  if (d.nsa === 'state') { applying = true; setState(d.i, d.k); applying = false; }
+});
+function openPresenter(){
+  // P toggles: inside the presenter window it closes it; in the audience window it opens or closes it
+  if (PRESENTER) { window.close(); return; }
+  if (peer && !peer.closed) { peer.close(); peer = null; toast('Presenter view closed'); return; }
+  const url = location.href.split(/[?#]/)[0] + '?presenter#' + (cur + 1);
+  peer = window.open(url, 'disc1-presenter', 'width=1280,height=800');
+  if (!peer) {
+    toast('Pop-up blocked. Allow pop-ups for this page (address bar icon, or Safari > Settings > Websites > Pop-up Windows), then press P again', 7000);
+    return;
+  }
+  try { peer.focus(); } catch (e) {}
+  toast(document.fullscreenElement
+    ? 'Presenter view opened in a new window. Exit fullscreen (F) if you cannot see it'
+    : 'Presenter view opened in a new window. Press P again to close it');
+}
+function toast(msg, ms = 3500){
+  let t = document.getElementById('toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), ms);
+}
+function renderPresenter(){
+  if (!PRESENTER) return;
+  const m = maxStep(slides[cur]);
+  document.getElementById('pcount').textContent = `Slide ${cur + 1} / ${N}`;
+  document.getElementById('psteps').textContent = m ? `step ${step} / ${m}` : '';
+  // big "clicks left on this slide" indicator above the notes
+  const left0 = m - step, bar = document.getElementById('pstepbar');
+  document.getElementById('pstepdots').innerHTML = Array.from({length: m}, (_, k) => `<i class="${k < step ? 'done' : ''}"></i>`).join('');
+  document.getElementById('psteptext').innerHTML = left0 > 0
+    ? `${left0} more click${left0 > 1 ? 's' : ''} on this slide<small>step ${step} of ${m}</small>`
+    : (cur < N - 1 ? `Next click → slide ${cur + 2}<small>${m ? 'all steps shown' : 'no animations on this slide'}</small>`
+                   : `Last slide<small>${m ? 'all steps shown' : ''}</small>`);
+  bar.classList.toggle('last', left0 <= 0);
+  const box = document.getElementById('pnextBox'), lab = document.getElementById('pnextLab');
+  box.innerHTML = '';
+  const left = m - step;
+  lab.textContent = left > 0 ? `Next · ${left} more step${left > 1 ? 's' : ''} on this slide, then:` : 'Next slide';
+  if (cur < N - 1) {
+    const f = document.createElement('div'); f.className = 'frame';
+    const c = slides[cur + 1].cloneNode(true); c.classList.remove('on'); f.appendChild(c); box.appendChild(f);
+    requestAnimationFrame(() => { f.style.transform = `scale(${Math.min(box.clientWidth / 960, box.clientHeight / 540)})`; });
+  } else box.innerHTML = '<div class="end">End of presentation</div>';
+}
+function toggleAnim(on){
+  const v = !document.body.classList.toggle('noanim', on === undefined ? undefined : !on);
+  document.getElementById('bAnim').classList.toggle('act', v);
+  store.set('nsa-anim', v ? '1' : '0');
+}
+function toggle(cls, on){
+  const v = document.body.classList.toggle(cls, on);
+  document.getElementById({notes:'bNotes', grid:'bGrid'}[cls] || 'x')?.classList.toggle('act', v);
+  if (cls === 'notes') store.set('nsa-notes', v ? '1' : '0');
+  if (cls === 'grid' && v) sizeThumbs();
+  fit();
+}
+function fullscreen(){
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.();
+}
+document.addEventListener('fullscreenchange', () => { document.body.classList.toggle('fs', !!document.fullscreenElement); fit(); });
+
+// overview grid
+const grid = document.getElementById('grid');
+slides.forEach((s, k) => {
+  const t = document.createElement('div'); t.className = 'thumb';
+  const c = s.cloneNode(true); c.classList.remove('on'); t.appendChild(c);
+  c.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
+  const b = document.createElement('b'); b.textContent = k + 1; t.appendChild(b);
+  t.onclick = () => { go(k); toggle('grid', false); };
+  grid.appendChild(t);
+});
+function sizeThumbs(){
+  requestAnimationFrame(() => document.querySelectorAll('.thumb').forEach(t => {
+    t.firstChild.style.transform = `scale(${t.clientWidth / 960})`;
+  }));
+}
+
+document.getElementById('prev').onclick = prev;
+document.getElementById('next').onclick = next;
+document.getElementById('bNotes').onclick = () => toggle('notes');
+document.getElementById('bGrid').onclick = () => toggle('grid');
+document.getElementById('bFs').onclick = fullscreen;
+document.getElementById('bPres').onclick = openPresenter;
+document.getElementById('bAnim').onclick = () => toggleAnim();
+stage.addEventListener('click', e => { const r = stage.getBoundingClientRect(); (e.clientX - r.left < r.width / 3 ? prev : next)(); });
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key;
+  if (e.shiftKey && k === 'ArrowRight') { e.preventDefault(); go(cur + 1, true); return; }
+  if (e.shiftKey && k === 'ArrowLeft') { e.preventDefault(); go(cur - 1, true); return; }
+  if (['ArrowRight','ArrowDown','PageDown',' ','Enter'].includes(k)) { e.preventDefault(); next(); }
+  else if (['ArrowLeft','ArrowUp','PageUp','Backspace'].includes(k)) { e.preventDefault(); prev(); }
+  else if (k === 'Home') go(0);
+  else if (k === 'End') go(N - 1, true);
+  else if (k === 'n' || k === 'N') toggle('notes');
+  else if (k === 'g' || k === 'G' || (k === 'Escape' && document.body.classList.contains('grid'))) toggle('grid');
+  else if (k === 'f' || k === 'F') fullscreen();
+  else if (k === 'a' || k === 'A') toggleAnim();
+  else if (k === 'p' || k === 'P') openPresenter();
+});
+let tx = null;
+stage.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, {passive:true});
+stage.addEventListener('touchend', e => { if (tx === null) return; const d = e.changedTouches[0].clientX - tx; if (Math.abs(d) > 40) (d < 0 ? next : prev)(); tx = null; });
+window.addEventListener('resize', () => { fit(); if (document.body.classList.contains('grid')) sizeThumbs(); });
+window.addEventListener('hashchange', () => { const h = parseInt(location.hash.slice(1)); if (h) go(h - 1); });
+
+if (!PRESENTER && store.get('nsa-notes') === '1') toggle('notes', true);  // N state survives a reload
+if (store.get('nsa-anim') === '0') toggleAnim(false);
+if (PRESENTER) {
+  document.body.classList.add('presenter');
+  document.title = 'Presenter · ' + document.title;
+  const t0 = {v: Date.now()}, pad = n => String(n).padStart(2, '0');
+  const tick = () => {
+    const s = Math.floor((Date.now() - t0.v) / 1000), d = new Date();
+    document.getElementById('ptimer').textContent = `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
+    document.getElementById('pclock').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  setInterval(tick, 500); tick();
+  document.getElementById('ptimer').onclick = () => { t0.v = Date.now(); tick(); };
+  let nfs = parseFloat(store.get('nsa-nfs')) || 22;
+  const setN = v => { nfs = Math.max(14, Math.min(40, v)); document.body.style.setProperty('--nfs', nfs + 'px'); store.set('nsa-nfs', nfs); };
+  setN(nfs);
+  document.getElementById('pSmaller').onclick = () => setN(nfs - 2);
+  document.getElementById('pBigger').onclick = () => setN(nfs + 2);
+  window.addEventListener('resize', renderPresenter);
+}
+go((parseInt(location.hash.slice(1)) || 1) - 1);
+if (PRESENTER && window.opener) try { window.opener.postMessage({nsa: 'hello'}, '*'); } catch (e) {}
+fit();
+</script>
+</body>
+</html>

@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deck Title</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400&family=Arimo:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--chrome:#1f2329;--chrome-fg:#e8eaed;--chrome-dim:#9aa0a6;--accent:#5b8def;}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--chrome);color:var(--chrome-fg);font-family:Arimo,Arial,sans-serif;overflow:hidden}
+#stage{position:absolute;inset:0 0 48px 0;display:flex;align-items:center;justify-content:center}
+body.notes #stage{bottom:calc(48px + 30vh)}
+body.fs #stage{bottom:0}
+#deck{position:relative;width:960px;height:540px;transform-origin:center center;flex:none}
+.slide{position:absolute;inset:0;width:960px;height:540px;overflow:hidden;display:none;box-shadow:0 8px 40px rgba(0,0,0,.45);
+  color:#1f2933;font-family:'Times New Roman',Tinos,serif;line-height:1.15}
+.slide.on{display:block}
+.el{position:absolute;margin:0}
+.sh{overflow:visible}
+.tx{position:absolute;display:flex;flex-direction:column}
+.tx p{margin:0;white-space:pre-wrap;overflow-wrap:break-word}
+.bul{position:absolute;top:0}
+sub{font-size:70%;vertical-align:-0.25em;line-height:0}
+sub span{font-size:inherit!important}
+.pnum{position:absolute;right:28px;bottom:16px;font:14px 'Times New Roman',Tinos,serif;color:#5f6b7a;pointer-events:none}
+.lines{position:absolute;inset:0;width:960px;height:540px;pointer-events:none;overflow:visible}
+.tb{border-collapse:collapse;table-layout:fixed}
+.tb td{vertical-align:top;padding:6px 9.6px;border-bottom:1px solid #c5cbd3}
+.tb tr:first-child td{border-bottom:1.5px solid #1f2933}
+.tb td p{margin:0}
+/* ---- entrance animations: restart whenever a slide becomes visible ---- */
+.slide [data-s]:not(.in){visibility:hidden}
+.slide [data-o].gone{opacity:0;visibility:hidden}
+.slide.on [data-o].gone:not(.gone-now){visibility:visible;animation:aOut .45s ease both}
+@keyframes aOut{from{opacity:1}to{opacity:0;visibility:hidden}}
+.thumb [data-o],#pnextBox [data-o]{visibility:hidden!important}
+.slide.on .a.in{animation:var(--fx) .6s cubic-bezier(.2,.75,.25,1) both;animation-delay:var(--d,0s)}
+.slide.on .a.in.instant{animation:none}
+.fx-fade{--fx:aFade}.fx-up{--fx:aUp}.fx-down{--fx:aDown}.fx-left{--fx:aLeft}.fx-right{--fx:aRight}
+.fx-pop{--fx:aPop}.fx-draw{--fx:aDraw}.fx-growx{--fx:aGrowX;transform-origin:left center}.fx-growy{--fx:aGrowY;transform-origin:center bottom}
+.slide.on .fx-growx,.slide.on .fx-growy{animation-duration:.7s}
+.slide.on .fx-draw.in{animation-duration:.8s;animation-timing-function:ease-in-out}
+@keyframes aDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes aFade{from{opacity:0}to{opacity:1}}
+@keyframes aUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes aDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+@keyframes aLeft{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
+@keyframes aRight{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@keyframes aPop{0%{opacity:0;transform:scale(.5)}70%{opacity:1;transform:scale(1.06)}100%{opacity:1;transform:none}}
+@keyframes aGrowX{from{opacity:.2;transform:scaleX(0)}to{opacity:1;transform:none}}
+@keyframes aGrowY{from{opacity:.2;transform:scaleY(0)}to{opacity:1;transform:none}}
+body.noanim .slide.on,body.noanim .slide.on .a.in,.thumb .slide .a,.thumb .slide{animation:none!important}
+.thumb .slide [data-s]{visibility:visible!important}
+@media (prefers-reduced-motion:reduce){.slide.on,.slide.on .a.in{animation:none!important}}
+#bar{position:absolute;left:0;right:0;bottom:0;height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;
+  background:#16191d;border-top:1px solid #2c3138;font-size:13px}
+body.fs #bar{display:none}
+#bar button{background:transparent;border:1px solid #3a4048;color:var(--chrome-fg);border-radius:6px;height:32px;min-width:32px;
+  padding:0 10px;cursor:pointer;font:inherit}
+#bar button:hover{background:#2a2f36}
+#bar button.act{border-color:var(--accent);color:#fff;background:#24324d}
+#steps{display:flex;gap:4px;align-items:center;min-width:0}
+#steps i{width:6px;height:6px;border-radius:50%;background:#3a4048}
+#steps i.on{background:var(--accent)}
+#count{min-width:64px;text-align:center;color:var(--chrome-dim);font-variant-numeric:tabular-nums}
+#prog{flex:1;height:4px;background:#2c3138;border-radius:2px;overflow:hidden}
+#prog i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+#hint{color:var(--chrome-dim);white-space:nowrap}
+#notes{position:absolute;left:0;right:0;bottom:48px;height:30vh;display:none;padding:14px 20px;overflow:auto;
+  background:#191c20;border-top:1px solid #2c3138;font-size:16px;line-height:1.55;color:#d5d8dc}
+#notes h4{margin:0 0 6px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--chrome-dim);font-weight:700}
+body.notes #notes{display:block}
+body.fs #notes{display:none}
+#grid{position:absolute;inset:0;display:none;overflow:auto;padding:24px;background:var(--chrome);z-index:5}
+body.grid #grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px;align-content:start}
+.thumb{position:relative;aspect-ratio:16/9;cursor:pointer;border-radius:4px;overflow:hidden;outline:2px solid transparent}
+.thumb:hover,.thumb.cur{outline-color:var(--accent)}
+.thumb .slide{display:block;transform-origin:0 0;box-shadow:none}
+.thumb b{position:absolute;left:6px;bottom:4px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;padding:1px 6px;border-radius:3px}
+/* ---- presenter view (opened with P, synced with the audience window) ---- */
+#toast{position:fixed;left:50%;top:18px;transform:translate(-50%,-12px);max-width:min(720px,90vw);padding:10px 16px;border-radius:8px;background:#2a3140;color:#fff;font-size:14px;line-height:1.4;box-shadow:0 6px 24px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#pstepbar{display:none}
+body.presenter #pstepbar{display:flex;align-items:center;gap:14px;position:sticky;top:-12px;margin:-12px -18px 12px;padding:12px 18px;
+  background:#20262f;border-bottom:1px solid #2c3138;z-index:2}
+#pstepdots{display:flex;gap:7px;flex-wrap:wrap;max-width:55%}
+#pstepdots i{width:14px;height:14px;border-radius:50%;border:2px solid #5b8def;box-sizing:border-box}
+#pstepdots i.done{background:#5b8def}
+#psteptext{font-size:20px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums}
+#psteptext small{display:block;font-size:13px;font-weight:400;color:var(--chrome-dim)}
+#pstepbar.last{background:#1f2e25}
+#pstepbar.last #psteptext{color:#8fd19e}
+#notesText .seg{transition:opacity .2s,color .2s}
+#notesText .seg.past{opacity:.38}
+#notesText .seg.future{opacity:.6}
+#notesText .seg.cur{opacity:1;color:#fff}
+#notesText .star{display:inline-block;margin:0 4px 0 2px;padding:0 6px;border-radius:9px;font-size:.72em;line-height:1.5;
+  vertical-align:.12em;color:#1b1e23;background:#f5c542;font-weight:700}
+#notesText .star.past{opacity:.35}
+#notesText .star.future{background:#6b6040;color:#e8e2cc}
+#pbar,#pnext{display:none}
+body.presenter #bar{display:none}
+body.presenter #pbar{display:flex;position:absolute;left:0;right:0;top:0;height:56px;align-items:center;gap:14px;padding:0 18px;
+  background:#16191d;border-bottom:1px solid #2c3138;font-size:14px}
+body.presenter #stage{inset:56px 38% 0 0}
+body.presenter #pnext{display:flex;flex-direction:column;position:absolute;right:0;top:56px;width:38%;height:36vh;padding:12px 18px 8px;gap:8px}
+body.presenter #notes{display:block;left:62%;right:0;top:calc(56px + 36vh);bottom:0;height:auto;border-top:1px solid #2c3138;
+  font-size:var(--nfs,22px);line-height:1.5;padding:12px 18px 24px}
+#pbar .big{font-size:22px;font-variant-numeric:tabular-nums;color:#fff}
+#pbar .dim{color:var(--chrome-dim)}
+#pbar button{background:transparent;border:1px solid #3a4048;color:var(--chrome-fg);border-radius:6px;height:32px;min-width:32px;padding:0 10px;cursor:pointer;font:inherit}
+#pbar button:hover{background:#2a2f36}
+#pbar .sp{flex:1}
+#ptimer{cursor:pointer}
+#pnextLab{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--chrome-dim);font-weight:700}
+#pnextBox{position:relative;flex:1;min-height:0}
+#pnextBox .frame{position:absolute;left:0;top:0;width:960px;height:540px;transform-origin:0 0;border-radius:4px;overflow:hidden;outline:1px solid #3a4048}
+#pnextBox .slide{display:block;box-shadow:none}
+#pnextBox .slide [data-s]{visibility:visible!important;animation:none!important}
+#pnextBox .end{color:var(--chrome-dim);font-size:18px;padding-top:20px}
+@media (max-width:1180px){#hint{display:none}}
+@media (max-width:640px){#hint{display:none}#bar{gap:4px;padding:0 6px}#bar button{padding:0 7px}}
+@media print{
+  @page{size:960px 540px;margin:0}
+  html,body{overflow:visible;height:auto;background:#fff}
+  #bar,#notes,#grid{display:none!important}
+  #stage{position:static;display:block}
+  #deck{transform:none!important;width:auto;height:auto}
+  .slide{position:relative;display:block;box-shadow:none;page-break-after:always}
+  .slide,.slide .a{animation:none!important}
+  .slide [data-s]{visibility:visible!important}
+  .slide [data-o]{visibility:hidden!important}
+}
+/* ---- content helpers (flow layout inside .bd; use for text-heavy slides) ---- */
+.ttl{position:absolute;left:48px;top:38px;right:48px;font-size:42.67px;line-height:1.1;color:#1f2933}
+.bd{position:absolute;left:48px;right:48px;top:116px;bottom:40px}
+.bd p{margin:0}
+.h{font-size:25px;color:#3b5b7a;margin:0 0 4px}
+.sub{font-size:20px;color:#5f6b7a}
+.lab{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#5f6b7a}
+.txt{font-size:21px;line-height:1.3}
+.muted{color:#5f6b7a}
+.navy{color:#3b5b7a}
+.ok{color:#4f7d5c}
+.num{font-variant-numeric:tabular-nums}
+.box{background:#eceef1;padding:14px 18px;border-radius:3px}
+.call{border-left:4px solid #3b5b7a;background:#e1e8f0;padding:12px 18px;font-size:21px;line-height:1.3;color:#3b5b7a;border-radius:3px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:0 40px}
+.vr{border-left:1.5px solid #c5cbd3;padding-left:32px}
+.stack>*+*{margin-top:14px}
+.pts{display:grid;gap:14px}
+.pt{border-left:4px solid #3b5b7a;padding:2px 0 2px 14px;font-size:21px;line-height:1.3}
+.pt b{color:#3b5b7a;margin-right:8px}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.steps li{display:grid;grid-template-columns:30px 1fr;gap:10px;font-size:21px;line-height:1.3}
+.steps li i{font-style:normal;width:26px;height:26px;background:#3b5b7a;color:#fff;font-size:15px;display:grid;place-items:center;margin-top:1px}
+.tag{display:inline-block;border:1px solid #3b5b7a;color:#3b5b7a;padding:2px 12px;font-size:18px;margin-right:8px}
+table.cmp{width:100%;border-collapse:collapse;font-size:21px;margin-top:6px}
+.cmp td{padding:10px 12px;border-bottom:1px solid #c5cbd3;text-align:right;vertical-align:top}
+.cmp td:first-child{text-align:left}
+.cmp tr:first-child td{border-bottom:1.5px solid #1f2933;color:#1f2933}
+.cmp td.hl{background:#e1e8f0}
+.cmp small{display:block;font-size:15px;color:#5f6b7a}
+.cmp.tight td{padding:5px 12px;font-size:16px}
+.src{position:absolute;left:48px;bottom:12px;width:820px;font-size:11px;line-height:1.35;color:#9aa3ae}
+.rst{position:absolute;right:48px;top:52px;font:15px 'Times New Roman',Tinos,serif;background:#fff;border:1px solid #c5cbd3;color:#1f2933;padding:5px 12px;cursor:pointer}
+.rst:hover{background:#eceef1}
+</style>
+</head>
+<body>
+<div id="stage"><div id="deck">
+<!-- ======================= SLIDES START ======================= -->
+<!-- Slide 1: title (no clicks). Replace the text; keep the positions. PRESENTER is the name the user gave you; ask if you do not know it. -->
+<section class="slide" style="background:#fff" data-i="0" data-steps="0">
+<div class="el a fx-down" data-s="0" style="left:57.6px;top:96px;width:830px;font-size:53.33px;line-height:1.15;color:#1f2933">DECK TITLE</div>
+<div class="el a fx-up" data-s="0" style="--d:.4s;left:57.6px;top:268px;width:830px;font-size:29.33px;color:#3b5b7a">One-line subtitle</div>
+<div class="el a fx-up" data-s="0" style="--d:.7s;left:57.6px;top:372px;width:830px;font-size:21.33px;color:#5f6b7a">Course or venue</div>
+<div class="el a fx-up" data-s="0" style="--d:.7s;left:57.6px;top:404px;width:830px;font-size:21.33px;color:#1f2933">Presented by PRESENTER</div>
+</section>
+<!-- Slide 2: example content slide with 2 clicks (data-steps="2", elements at data-s 0..2). -->
+<section class="slide" style="background:#fff" data-i="1" data-steps="2"><div class="ttl a fx-down" data-s="0">Example Content Slide</div>
+<div class="bd">
+  <p class="sub a fx-fade" data-s="0">A one-line framing sentence that appears with the title.</p>
+  <div class="pts a fx-up" data-s="1" style="margin-top:18px">
+    <div class="pt"><b>Point one</b>Short claim in one sentence.</div>
+    <div class="pt"><b>Point two</b>Another short claim.</div>
+  </div>
+  <div class="call a fx-up" data-s="2" style="margin-top:26px">The takeaway of this slide, in one sentence.</div>
+</div>
+<div class="pnum">2</div>
+</section>
+<!-- ======================= SLIDES END ======================= -->
+</div></div>
+<div id="notes"><div id="pstepbar"><div id="pstepdots"></div><div id="psteptext"></div></div><h4>Speaker notes</h4><div id="notesText"></div></div>
+<div id="grid"></div>
+<div id="pbar">
+  <span class="big" id="pcount"></span><span id="psteps" class="dim"></span>
+  <span class="sp"></span>
+  <span class="dim">Elapsed</span><span class="big" id="ptimer" title="Click to reset">00:00</span>
+  <span class="dim">Clock</span><span class="big" id="pclock"></span>
+  <button id="pSmaller" title="Smaller notes">A−</button><button id="pBigger" title="Larger notes">A+</button>
+</div>
+<div id="pnext"><div id="pnextLab">Next</div><div id="pnextBox"></div></div>
+<div id="bar">
+  <button id="prev" title="Previous (←)" aria-label="Previous slide">‹</button>
+  <span id="count"></span>
+  <button id="next" title="Next (→)" aria-label="Next step">›</button>
+  <span id="steps" aria-hidden="true"></span>
+  <div id="prog"><i></i></div>
+  <span id="hint">← → step · Shift+← → slide · P presenter · N notes · G overview · A animation · F fullscreen</span>
+  <button id="bNotes" title="Speaker notes (N)">Notes</button>
+  <button id="bPres" title="Open or close the presenter view (P)">Presenter</button>
+  <button id="bGrid" title="Overview (G)">Grid</button>
+  <button id="bAnim" class="act" title="Animations on/off (A)">Anim</button>
+  <button id="bFs" title="Fullscreen (F)">⛶</button>
+</div>
+<script>
+// One string per slide, in slide order. ★ marks a click: the text after the k-th ★
+// is what to say after the k-th click, so each string must contain exactly data-steps ★ characters.
+const NOTES = [
+  "Opening line for the title slide. It has no click markers because data-steps is 0.",
+  "Say this when the slide appears. ★ Say this after click 1, when the points appear. ★ Say this after click 2, the callout."
+];
+const deck = document.getElementById('deck'), stage = document.getElementById('stage');
+const slides = [...deck.querySelectorAll('.slide')], N = slides.length;
+let cur = -1;
+const store = { get(k){try{return localStorage.getItem(k)}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}} };
+
+function fit(){
+  const r = stage.getBoundingClientRect();
+  const s = Math.min(r.width / 960, r.height / 540) * (document.body.classList.contains('fs') ? 1 : 0.96);
+  deck.style.transform = `scale(${s})`;
+}
+let step = 0;
+const maxStep = s => +s.dataset.steps || 0;
+// reveal every element whose step <= k; `animate` false shows them instantly
+function show(slide, k, animate){
+  slide.querySelectorAll('[data-s]').forEach(el => {
+    const s = +el.dataset.s, was = el.classList.contains('in');
+    if (s <= k) {
+      if (!was) {
+        el.classList.add('in'); el.classList.toggle('instant', !animate);
+        if (el.dataset.count !== undefined) countUp(el, animate);
+      }
+    } else el.classList.remove('in', 'instant');
+  });
+  // elements with data-o fade out once step k reaches their out-step
+  slide.querySelectorAll('[data-o]').forEach(el => {
+    if (k >= +el.dataset.o) {
+      if (!el.classList.contains('gone')) { el.classList.add('gone'); el.classList.toggle('gone-now', !animate); }
+    } else el.classList.remove('gone', 'gone-now');
+  });
+}
+// Keynote-style magic move: elements sharing a data-mm key glide from their old slide position to the new one
+function magicMove(from, to){
+  if (!from || from === to || noMotion()) return () => {};
+  const scale = deck.getBoundingClientRect().width / 960, old = {};
+  const visible = e => getComputedStyle(e).visibility !== 'hidden' && !e.classList.contains('gone');
+  from.querySelectorAll('[data-mm]').forEach(e => { if (visible(e)) old[e.dataset.mm] = e.getBoundingClientRect(); });
+  return () => to.querySelectorAll('[data-mm]').forEach(e => {
+    const a = old[e.dataset.mm];
+    if (!a || !visible(e)) return;
+    const b = e.getBoundingClientRect();
+    if (!b.width || !b.height) return;
+    const dx = (a.left - b.left) / scale, dy = (a.top - b.top) / scale, sx = a.width / b.width, sy = a.height / b.height;
+    if (Math.abs(dx) < .5 && Math.abs(dy) < .5 && Math.abs(sx - 1) < .01 && Math.abs(sy - 1) < .01) return;
+    e.animate([{transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`, transformOrigin: '0 0'},
+               {transform: 'none', transformOrigin: '0 0'}], {duration: 700, easing: 'cubic-bezier(.3, .7, .2, 1)'});
+  });
+}
+function go(i, atEnd){
+  i = Math.max(0, Math.min(N - 1, i));
+  const changed = i !== cur || !slides[i].classList.contains('on');
+  const glide = changed && cur >= 0 ? magicMove(slides[cur], slides[i]) : () => {};
+  cur = i;
+  if (changed) {
+    slides.forEach((s, k) => s.classList.toggle('on', k === cur));
+    slides[cur].querySelectorAll('[data-s]').forEach(el => el.classList.remove('in', 'instant'));
+    slides[cur].querySelectorAll('[data-o]').forEach(el => el.classList.remove('gone', 'gone-now'));
+    step = atEnd ? maxStep(slides[cur]) : 0;
+    show(slides[cur], step, false);  // page turns are instant; only key-press steps animate
+    glide();
+  }
+  if (atEnd && !changed) { step = maxStep(slides[cur]); show(slides[cur], step, false); }
+  if (atEnd) slides[cur].querySelectorAll('[data-s]').forEach(el => el.classList.add('instant'));
+  update();
+}
+function next(){
+  if (step < maxStep(slides[cur])) { step++; show(slides[cur], step, true); update(); }
+  else if (cur < N - 1) go(cur + 1);
+}
+function prev(){
+  if (step > 0) { step--; show(slides[cur], step, false); update(); }
+  else if (cur > 0) go(cur - 1, true);
+}
+function update(){
+  const m = maxStep(slides[cur]);
+  document.getElementById('count').textContent = `${cur + 1} / ${N}`;
+  document.getElementById('steps').innerHTML = m ? Array.from({length: m}, (_, k) => `<i class="${k < step ? 'on' : ''}"></i>`).join('') : '';
+  document.querySelector('#prog i').style.width = `${(cur + (m ? step / m : 1)) / N * 100}%`;
+  const nt = document.getElementById('notesText'), newSlide = cur !== update.lastSlide;
+  if (newSlide) {
+    // ★ marks a click: segment k is what to say after the k-th click on this slide
+    const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    nt.innerHTML = (NOTES[cur] || '').split('★').map((t, k) =>
+      (k ? `<b class="star" data-k="${k}">★${k}</b>` : '') + `<span class="seg" data-k="${k}">${esc(t.trim())}</span> `).join('');
+    document.getElementById('notes').scrollTop = 0;   // new slide: notes start at the top
+    update.lastSlide = cur;
+  }
+  nt.querySelectorAll('[data-k]').forEach(e => {
+    const k = +e.dataset.k;
+    e.classList.toggle('past', k < step); e.classList.toggle('cur', k === step); e.classList.toggle('future', k > step);
+  });
+  const curSeg = nt.querySelector('.seg.cur');
+  if (!newSlide && curSeg && curSeg.scrollIntoView) curSeg.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+  history.replaceState(null, '', '#' + (cur + 1));
+  renderPresenter();
+  send();
+  document.querySelectorAll('.thumb').forEach((t, k) => t.classList.toggle('cur', k === cur));
+}
+// count-up numbers (e.g. 65,536 / 4.0×), started after the element's own delay
+const noMotion = () => document.body.classList.contains('noanim') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+function countUp(el, animate){
+  const span = [...el.querySelectorAll('span, p')].find(s => /\d/.test(s.textContent) && !s.children.length);
+  if (!span) return;
+  if (!span.dataset.orig) span.dataset.orig = span.textContent;
+  const orig = span.dataset.orig, m = orig.match(/\d[\d,]*(\.\d+)?/);
+  const token = (span._tok = (span._tok || 0) + 1);
+  if (!m || !animate || noMotion()) { span.textContent = orig; return; }
+  const target = parseFloat(m[0].replace(/,/g, '')), dec = m[1] ? m[1].length - 1 : 0;
+  const comma = m[0].includes(','), pre = orig.slice(0, m.index), post = orig.slice(m.index + m[0].length);
+  const fmt = v => { let s = v.toFixed(dec); if (comma) s = Number(s).toLocaleString('en-US', {minimumFractionDigits: dec}); return pre + s + post; };
+  span.textContent = fmt(0);
+  setTimeout(() => {
+    const t0 = performance.now(), dur = 900;
+    const tick = now => {
+      if (span._tok !== token) return;
+      const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+      span.textContent = p < 1 ? fmt(target * e) : orig;
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    setTimeout(() => { if (span._tok === token) span.textContent = orig; }, dur + 200);
+  }, parseFloat(el.dataset.count) * 1000 + 150);
+}
+// ---- presenter view: a second window with notes, synced over postMessage ----
+const PRESENTER = new URLSearchParams(location.search).has('presenter');
+let peer = null, applying = false;
+function target(){ const t = PRESENTER ? window.opener : peer; return t && !t.closed ? t : null; }
+function send(){
+  if (applying) return;
+  const t = target(); if (t) try { t.postMessage({nsa: 'state', i: cur, k: step}, '*'); } catch (e) {}
+}
+function setState(i, k){
+  if (i !== cur) { go(i); if (k > 0) { step = k; show(slides[cur], k, false); update(); } }
+  else if (k !== step) { const anim = k === step + 1; step = k; show(slides[cur], k, anim); update(); }
+}
+window.addEventListener('message', e => {
+  const d = e.data; if (!d || !d.nsa) return;
+  if (!PRESENTER) peer = e.source;
+  if (d.nsa === 'hello') send();
+  if (d.nsa === 'state') { applying = true; setState(d.i, d.k); applying = false; }
+});
+function openPresenter(){
+  // P toggles: inside the presenter window it closes it; in the audience window it opens or closes it
+  if (PRESENTER) { window.close(); return; }
+  if (peer && !peer.closed) { peer.close(); peer = null; toast('Presenter view closed'); return; }
+  const url = location.href.split(/[?#]/)[0] + '?presenter#' + (cur + 1);
+  peer = window.open(url, 'slides-presenter', 'width=1280,height=800');
+  if (!peer) {
+    toast('Pop-up blocked. Allow pop-ups for this page (address bar icon, or Safari > Settings > Websites > Pop-up Windows), then press P again', 7000);
+    return;
+  }
+  try { peer.focus(); } catch (e) {}
+  toast(document.fullscreenElement
+    ? 'Presenter view opened in a new window. Exit fullscreen (F) if you cannot see it'
+    : 'Presenter view opened in a new window. Press P again to close it');
+}
+function toast(msg, ms = 3500){
+  let t = document.getElementById('toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), ms);
+}
+function renderPresenter(){
+  if (!PRESENTER) return;
+  const m = maxStep(slides[cur]);
+  document.getElementById('pcount').textContent = `Slide ${cur + 1} / ${N}`;
+  document.getElementById('psteps').textContent = m ? `step ${step} / ${m}` : '';
+  // big "clicks left on this slide" indicator above the notes
+  const left0 = m - step, bar = document.getElementById('pstepbar');
+  document.getElementById('pstepdots').innerHTML = Array.from({length: m}, (_, k) => `<i class="${k < step ? 'done' : ''}"></i>`).join('');
+  document.getElementById('psteptext').innerHTML = left0 > 0
+    ? `${left0} more click${left0 > 1 ? 's' : ''} on this slide<small>step ${step} of ${m}</small>`
+    : (cur < N - 1 ? `Next click → slide ${cur + 2}<small>${m ? 'all steps shown' : 'no animations on this slide'}</small>`
+                   : `Last slide<small>${m ? 'all steps shown' : ''}</small>`);
+  bar.classList.toggle('last', left0 <= 0);
+  const box = document.getElementById('pnextBox'), lab = document.getElementById('pnextLab');
+  box.innerHTML = '';
+  const left = m - step;
+  lab.textContent = left > 0 ? `Next · ${left} more step${left > 1 ? 's' : ''} on this slide, then:` : 'Next slide';
+  if (cur < N - 1) {
+    const f = document.createElement('div'); f.className = 'frame';
+    const c = slides[cur + 1].cloneNode(true); c.classList.remove('on'); f.appendChild(c); box.appendChild(f);
+    requestAnimationFrame(() => { f.style.transform = `scale(${Math.min(box.clientWidth / 960, box.clientHeight / 540)})`; });
+  } else box.innerHTML = '<div class="end">End of presentation</div>';
+}
+function toggleAnim(on){
+  const v = !document.body.classList.toggle('noanim', on === undefined ? undefined : !on);
+  document.getElementById('bAnim').classList.toggle('act', v);
+  store.set('nsa-anim', v ? '1' : '0');
+}
+function toggle(cls, on){
+  const v = document.body.classList.toggle(cls, on);
+  document.getElementById({notes:'bNotes', grid:'bGrid'}[cls] || 'x')?.classList.toggle('act', v);
+  if (cls === 'notes') store.set('nsa-notes', v ? '1' : '0');
+  if (cls === 'grid' && v) sizeThumbs();
+  fit();
+}
+function fullscreen(){
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.();
+}
+document.addEventListener('fullscreenchange', () => { document.body.classList.toggle('fs', !!document.fullscreenElement); fit(); });
+
+// overview grid
+const grid = document.getElementById('grid');
+slides.forEach((s, k) => {
+  const t = document.createElement('div'); t.className = 'thumb';
+  const c = s.cloneNode(true); c.classList.remove('on'); t.appendChild(c);
+  c.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
+  const b = document.createElement('b'); b.textContent = k + 1; t.appendChild(b);
+  t.onclick = () => { go(k); toggle('grid', false); };
+  grid.appendChild(t);
+});
+function sizeThumbs(){
+  requestAnimationFrame(() => document.querySelectorAll('.thumb').forEach(t => {
+    t.firstChild.style.transform = `scale(${t.clientWidth / 960})`;
+  }));
+}
+
+document.getElementById('prev').onclick = prev;
+document.getElementById('next').onclick = next;
+document.getElementById('bNotes').onclick = () => toggle('notes');
+document.getElementById('bGrid').onclick = () => toggle('grid');
+document.getElementById('bFs').onclick = fullscreen;
+document.getElementById('bPres').onclick = openPresenter;
+document.getElementById('bAnim').onclick = () => toggleAnim();
+stage.addEventListener('click', e => { if (e.target.closest('button')) return; const r = stage.getBoundingClientRect(); (e.clientX - r.left < r.width / 3 ? prev : next)(); });
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key;
+  if (e.shiftKey && k === 'ArrowRight') { e.preventDefault(); go(cur + 1, true); return; }
+  if (e.shiftKey && k === 'ArrowLeft') { e.preventDefault(); go(cur - 1, true); return; }
+  if (['ArrowRight','ArrowDown','PageDown',' ','Enter'].includes(k)) { e.preventDefault(); next(); }
+  else if (['ArrowLeft','ArrowUp','PageUp','Backspace'].includes(k)) { e.preventDefault(); prev(); }
+  else if (k === 'Home') go(0);
+  else if (k === 'End') go(N - 1, true);
+  else if (k === 'n' || k === 'N') toggle('notes');
+  else if (k === 'g' || k === 'G' || (k === 'Escape' && document.body.classList.contains('grid'))) toggle('grid');
+  else if (k === 'f' || k === 'F') fullscreen();
+  else if (k === 'a' || k === 'A') toggleAnim();
+  else if (k === 'p' || k === 'P') openPresenter();
+});
+let tx = null;
+stage.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, {passive:true});
+stage.addEventListener('touchend', e => { if (tx === null) return; const d = e.changedTouches[0].clientX - tx; if (Math.abs(d) > 40) (d < 0 ? next : prev)(); tx = null; });
+window.addEventListener('resize', () => { fit(); if (document.body.classList.contains('grid')) sizeThumbs(); });
+window.addEventListener('hashchange', () => { const h = parseInt(location.hash.slice(1)); if (h) go(h - 1); });
+
+if (!PRESENTER && store.get('nsa-notes') === '1') toggle('notes', true);  // N state survives a reload
+if (store.get('nsa-anim') === '0') toggleAnim(false);
+if (PRESENTER) {
+  document.body.classList.add('presenter');
+  document.title = 'Presenter · ' + document.title;
+  const t0 = {v: Date.now()}, pad = n => String(n).padStart(2, '0');
+  const tick = () => {
+    const s = Math.floor((Date.now() - t0.v) / 1000), d = new Date();
+    document.getElementById('ptimer').textContent = `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
+    document.getElementById('pclock').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  setInterval(tick, 500); tick();
+  document.getElementById('ptimer').onclick = () => { t0.v = Date.now(); tick(); };
+  let nfs = parseFloat(store.get('nsa-nfs')) || 22;
+  const setN = v => { nfs = Math.max(14, Math.min(40, v)); document.body.style.setProperty('--nfs', nfs + 'px'); store.set('nsa-nfs', nfs); };
+  setN(nfs);
+  document.getElementById('pSmaller').onclick = () => setN(nfs - 2);
+  document.getElementById('pBigger').onclick = () => setN(nfs + 2);
+  window.addEventListener('resize', renderPresenter);
+}
+go((parseInt(location.hash.slice(1)) || 1) - 1, new URLSearchParams(location.search).has('all'));  // ?all reveals every step, for screenshots
+if (PRESENTER && window.opener) try { window.opener.postMessage({nsa: 'hello'}, '*'); } catch (e) {}
+fit();
+
+</script>
+</body>
+</html>

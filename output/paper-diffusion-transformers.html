@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scalable Diffusion Models with Transformers (DiT)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400&family=Arimo:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--chrome:#1f2329;--chrome-fg:#e8eaed;--chrome-dim:#9aa0a6;--accent:#5b8def;}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--chrome);color:var(--chrome-fg);font-family:Arimo,Arial,sans-serif;overflow:hidden}
+#stage{position:absolute;inset:0 0 48px 0;display:flex;align-items:center;justify-content:center}
+body.notes #stage{bottom:calc(48px + 30vh)}
+body.fs #stage{bottom:0}
+#deck{position:relative;width:960px;height:540px;transform-origin:center center;flex:none}
+.slide{position:absolute;inset:0;width:960px;height:540px;overflow:hidden;display:none;box-shadow:0 8px 40px rgba(0,0,0,.45);
+  color:#1f2933;font-family:'Times New Roman',Tinos,serif;line-height:1.15}
+.slide.on{display:block}
+.el{position:absolute;margin:0}
+.sh{overflow:visible}
+.tx{position:absolute;display:flex;flex-direction:column}
+.tx p{margin:0;white-space:pre-wrap;overflow-wrap:break-word}
+.bul{position:absolute;top:0}
+sub{font-size:70%;vertical-align:-0.25em;line-height:0}
+sub span{font-size:inherit!important}
+.pnum{position:absolute;right:28px;bottom:16px;font:14px 'Times New Roman',Tinos,serif;color:#5f6b7a;pointer-events:none}
+.lines{position:absolute;inset:0;width:960px;height:540px;pointer-events:none;overflow:visible}
+.tb{border-collapse:collapse;table-layout:fixed}
+.tb td{vertical-align:top;padding:6px 9.6px;border-bottom:1px solid #c5cbd3}
+.tb tr:first-child td{border-bottom:1.5px solid #1f2933}
+.tb td p{margin:0}
+/* ---- entrance animations: restart whenever a slide becomes visible ---- */
+.slide [data-s]:not(.in){visibility:hidden}
+.slide [data-o].gone{opacity:0;visibility:hidden}
+.slide.on [data-o].gone:not(.gone-now){visibility:visible;animation:aOut .45s ease both}
+@keyframes aOut{from{opacity:1}to{opacity:0;visibility:hidden}}
+.thumb [data-o],#pnextBox [data-o]{visibility:hidden!important}
+.slide.on .a.in{animation:var(--fx) .6s cubic-bezier(.2,.75,.25,1) both;animation-delay:var(--d,0s)}
+.slide.on .a.in.instant{animation:none}
+.fx-fade{--fx:aFade}.fx-up{--fx:aUp}.fx-down{--fx:aDown}.fx-left{--fx:aLeft}.fx-right{--fx:aRight}
+.fx-pop{--fx:aPop}.fx-draw{--fx:aDraw}.fx-growx{--fx:aGrowX;transform-origin:left center}.fx-growy{--fx:aGrowY;transform-origin:center bottom}
+.slide.on .fx-growx,.slide.on .fx-growy{animation-duration:.7s}
+.slide.on .fx-draw.in{animation-duration:.8s;animation-timing-function:ease-in-out}
+@keyframes aDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes aFade{from{opacity:0}to{opacity:1}}
+@keyframes aUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes aDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+@keyframes aLeft{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
+@keyframes aRight{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@keyframes aPop{0%{opacity:0;transform:scale(.5)}70%{opacity:1;transform:scale(1.06)}100%{opacity:1;transform:none}}
+@keyframes aGrowX{from{opacity:.2;transform:scaleX(0)}to{opacity:1;transform:none}}
+@keyframes aGrowY{from{opacity:.2;transform:scaleY(0)}to{opacity:1;transform:none}}
+body.noanim .slide.on,body.noanim .slide.on .a.in,.thumb .slide .a,.thumb .slide{animation:none!important}
+.thumb .slide [data-s]{visibility:visible!important}
+@media (prefers-reduced-motion:reduce){.slide.on,.slide.on .a.in{animation:none!important}}
+#bar{position:absolute;left:0;right:0;bottom:0;height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;
+  background:#16191d;border-top:1px solid #2c3138;font-size:13px}
+body.fs #bar{display:none}
+#bar button{background:transparent;border:1px solid #3a4048;color:var(--chrome-fg);border-radius:6px;height:32px;min-width:32px;
+  padding:0 10px;cursor:pointer;font:inherit}
+#bar button:hover{background:#2a2f36}
+#bar button.act{border-color:var(--accent);color:#fff;background:#24324d}
+#steps{display:flex;gap:4px;align-items:center;min-width:0}
+#steps i{width:6px;height:6px;border-radius:50%;background:#3a4048}
+#steps i.on{background:var(--accent)}
+#count{min-width:64px;text-align:center;color:var(--chrome-dim);font-variant-numeric:tabular-nums}
+#prog{flex:1;height:4px;background:#2c3138;border-radius:2px;overflow:hidden}
+#prog i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+#hint{color:var(--chrome-dim);white-space:nowrap}
+#notes{position:absolute;left:0;right:0;bottom:48px;height:30vh;display:none;padding:14px 20px;overflow:auto;
+  background:#191c20;border-top:1px solid #2c3138;font-size:16px;line-height:1.55;color:#d5d8dc}
+#notes h4{margin:0 0 6px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--chrome-dim);font-weight:700}
+body.notes #notes{display:block}
+body.fs #notes{display:none}
+#grid{position:absolute;inset:0;display:none;overflow:auto;padding:24px;background:var(--chrome);z-index:5}
+body.grid #grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px;align-content:start}
+.thumb{position:relative;aspect-ratio:16/9;cursor:pointer;border-radius:4px;overflow:hidden;outline:2px solid transparent}
+.thumb:hover,.thumb.cur{outline-color:var(--accent)}
+.thumb .slide{display:block;transform-origin:0 0;box-shadow:none}
+.thumb b{position:absolute;left:6px;bottom:4px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;padding:1px 6px;border-radius:3px}
+/* ---- presenter view (opened with P, synced with the audience window) ---- */
+#toast{position:fixed;left:50%;top:18px;transform:translate(-50%,-12px);max-width:min(720px,90vw);padding:10px 16px;border-radius:8px;background:#2a3140;color:#fff;font-size:14px;line-height:1.4;box-shadow:0 6px 24px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#pstepbar{display:none}
+body.presenter #pstepbar{display:flex;align-items:center;gap:14px;position:sticky;top:-12px;margin:-12px -18px 12px;padding:12px 18px;
+  background:#20262f;border-bottom:1px solid #2c3138;z-index:2}
+#pstepdots{display:flex;gap:7px;flex-wrap:wrap;max-width:55%}
+#pstepdots i{width:14px;height:14px;border-radius:50%;border:2px solid #5b8def;box-sizing:border-box}
+#pstepdots i.done{background:#5b8def}
+#psteptext{font-size:20px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums}
+#psteptext small{display:block;font-size:13px;font-weight:400;color:var(--chrome-dim)}
+#pstepbar.last{background:#1f2e25}
+#pstepbar.last #psteptext{color:#8fd19e}
+#notesText .seg{transition:opacity .2s,color .2s}
+#notesText .seg.past{opacity:.38}
+#notesText .seg.future{opacity:.6}
+#notesText .seg.cur{opacity:1;color:#fff}
+#notesText .star{display:inline-block;margin:0 4px 0 2px;padding:0 6px;border-radius:9px;font-size:.72em;line-height:1.5;
+  vertical-align:.12em;color:#1b1e23;background:#f5c542;font-weight:700}
+#notesText .star.past{opacity:.35}
+#notesText .star.future{background:#6b6040;color:#e8e2cc}
+#pbar,#pnext{display:none}
+body.presenter #bar{display:none}
+body.presenter #pbar{display:flex;position:absolute;left:0;right:0;top:0;height:56px;align-items:center;gap:14px;padding:0 18px;
+  background:#16191d;border-bottom:1px solid #2c3138;font-size:14px}
+body.presenter #stage{inset:56px 38% 0 0}
+body.presenter #pnext{display:flex;flex-direction:column;position:absolute;right:0;top:56px;width:38%;height:36vh;padding:12px 18px 8px;gap:8px}
+body.presenter #notes{display:block;left:62%;right:0;top:calc(56px + 36vh);bottom:0;height:auto;border-top:1px solid #2c3138;
+  font-size:var(--nfs,22px);line-height:1.5;padding:12px 18px 24px}
+#pbar .big{font-size:22px;font-variant-numeric:tabular-nums;color:#fff}
+#pbar .dim{color:var(--chrome-dim)}
+#pbar button{background:transparent;border:1px solid #3a4048;color:var(--chrome-fg);border-radius:6px;height:32px;min-width:32px;padding:0 10px;cursor:pointer;font:inherit}
+#pbar button:hover{background:#2a2f36}
+#pbar .sp{flex:1}
+#ptimer{cursor:pointer}
+#pnextLab{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--chrome-dim);font-weight:700}
+#pnextBox{position:relative;flex:1;min-height:0}
+#pnextBox .frame{position:absolute;left:0;top:0;width:960px;height:540px;transform-origin:0 0;border-radius:4px;overflow:hidden;outline:1px solid #3a4048}
+#pnextBox .slide{display:block;box-shadow:none}
+#pnextBox .slide [data-s]{visibility:visible!important;animation:none!important}
+#pnextBox .end{color:var(--chrome-dim);font-size:18px;padding-top:20px}
+@media (max-width:1180px){#hint{display:none}}
+@media (max-width:640px){#hint{display:none}#bar{gap:4px;padding:0 6px}#bar button{padding:0 7px}}
+@media print{
+  @page{size:960px 540px;margin:0}
+  html,body{overflow:visible;height:auto;background:#fff}
+  #bar,#notes,#grid{display:none!important}
+  #stage{position:static;display:block}
+  #deck{transform:none!important;width:auto;height:auto}
+  .slide{position:relative;display:block;box-shadow:none;page-break-after:always}
+  .slide,.slide .a{animation:none!important}
+  .slide [data-s]{visibility:visible!important}
+  .slide [data-o]{visibility:hidden!important}
+}
+/* ---- content helpers (flow layout inside .bd; use for text-heavy slides) ---- */
+.ttl{position:absolute;left:48px;top:38px;right:48px;font-size:42.67px;line-height:1.1;color:#1f2933}
+.bd{position:absolute;left:48px;right:48px;top:116px;bottom:40px}
+.bd p{margin:0}
+.h{font-size:25px;color:#3b5b7a;margin:0 0 4px}
+.sub{font-size:20px;color:#5f6b7a}
+.lab{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#5f6b7a}
+.txt{font-size:21px;line-height:1.3}
+.muted{color:#5f6b7a}
+.navy{color:#3b5b7a}
+.ok{color:#4f7d5c}
+.num{font-variant-numeric:tabular-nums}
+.box{background:#eceef1;padding:14px 18px;border-radius:3px}
+.call{border-left:4px solid #3b5b7a;background:#e1e8f0;padding:12px 18px;font-size:21px;line-height:1.3;color:#3b5b7a;border-radius:3px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:0 40px}
+.vr{border-left:1.5px solid #c5cbd3;padding-left:32px}
+.stack>*+*{margin-top:14px}
+.pts{display:grid;gap:14px}
+.pt{border-left:4px solid #3b5b7a;padding:2px 0 2px 14px;font-size:21px;line-height:1.3}
+.pt b{color:#3b5b7a;margin-right:8px}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.steps li{display:grid;grid-template-columns:30px 1fr;gap:10px;font-size:21px;line-height:1.3}
+.steps li i{font-style:normal;width:26px;height:26px;background:#3b5b7a;color:#fff;font-size:15px;display:grid;place-items:center;margin-top:1px}
+.tag{display:inline-block;border:1px solid #3b5b7a;color:#3b5b7a;padding:2px 12px;font-size:18px;margin-right:8px}
+table.cmp{width:100%;border-collapse:collapse;font-size:21px;margin-top:6px}
+.cmp td{padding:10px 12px;border-bottom:1px solid #c5cbd3;text-align:right;vertical-align:top}
+.cmp td:first-child{text-align:left}
+.cmp tr:first-child td{border-bottom:1.5px solid #1f2933;color:#1f2933}
+.cmp td.hl{background:#e1e8f0}
+.cmp small{display:block;font-size:15px;color:#5f6b7a}
+.cmp.tight td{padding:5px 12px;font-size:16px}
+.src{position:absolute;left:48px;bottom:12px;width:820px;font-size:11px;line-height:1.35;color:#9aa3ae}
+.rst{position:absolute;right:48px;top:52px;font:15px 'Times New Roman',Tinos,serif;background:#fff;border:1px solid #c5cbd3;color:#1f2933;padding:5px 12px;cursor:pointer}
+.rst:hover{background:#eceef1}
+</style>
+</head>
+<body>
+<div id="stage"><div id="deck">
+<section class="slide" style="background:#fff" data-i="title" data-steps="0">
+<div class="el a fx-down" data-s="0" style="left:57.6px;top:96px;width:830px;font-size:53.33px;line-height:1.15;color:#1f2933">Scalable Diffusion Models with Transformers</div>
+<div class="el a fx-up" data-s="0" style="--d:.4s;left:57.6px;top:236px;width:830px;font-size:29.33px;color:#3b5b7a">DiT: swap the U-Net for a transformer, then scale it</div>
+<div class="el a fx-up" data-s="0" style="--d:.7s;left:57.6px;top:340px;width:830px;font-size:21.33px;color:#5f6b7a">William Peebles and Saining Xie, ICCV 2023 · Paper presentation</div>
+<div class="el a fx-up" data-s="0" style="--d:.7s;left:57.6px;top:372px;width:830px;font-size:21.33px;color:#1f2933">Presented by Jane Doe</div>
+</section>
+<section class="slide" style="background:#fff" data-i="hook" data-steps="2">
+<div class="ttl a fx-down" data-s="0">Every Diffusion Model Had a U-Net Inside</div>
+<div class="el sh a fx-fade" data-s="0" style="--d:0s;left:48px;top:112px;width:130px;height:40px"><div class="tx" style="inset:0;justify-content:center;text-align:left"><p style="font-size:17px;color:#5f6b7a;font-style:italic;">U-Net backbones</p></div></div>
+<div class="el sh a fx-up" data-s="0" style="--d:0.1s;left:186px;top:112px;width:150px;height:40px;background:#eceef1;border-radius:3px;border-radius:4px;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;">DDPM (2020)</p></div></div>
+<div class="el sh a fx-up" data-s="0" style="--d:0.2s;left:356px;top:112px;width:150px;height:40px;background:#eceef1;border-radius:3px;border-radius:4px;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;">ADM (2021)</p></div></div>
+<div class="el sh a fx-up" data-s="0" style="--d:0.3s;left:526px;top:112px;width:200px;height:40px;background:#eceef1;border-radius:3px;border-radius:4px;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;">Stable Diffusion (2022)</p></div></div>
+<div class="el sh a fx-fade" data-s="0" style="--d:0.5s;left:746px;top:112px;width:166px;height:40px"><div class="tx" style="inset:0;justify-content:center;text-align:left"><p style="font-size:14px;color:#5f6b7a;">while the rest of vision<br>moved to ViTs</p></div></div>
+<div class="el sh a fx-growx" data-s="1" style="left:48px;top:196px;width:864px;height:2px;background:#3b5b7a"></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.15s;left:48px;top:216px;width:864px;height:150px;"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:50px;color:#3b5b7a;line-height:1.25;">Is the U-Net's inductive bias <b>necessary</b>,<br>or just a <b>habit</b>?</p></div></div>
+<div class="el sh a fx-growx" data-s="1" style="--d:.1s;left:48px;top:384px;width:864px;height:2px;background:#3b5b7a"></div>
+<div class="el sh a fx-fade" data-s="2" style="--d:0s;left:48px;top:412px;width:864px;height:44px"><div class="tx" style="inset:0;justify-content:center;text-align:center"><p style="font-size:22px;color:#4f7d5c;font-style:italic;">Spoiler: a plain transformer does better, and keeps improving as you scale it</p></div></div>
+<div class="pnum">2</div>
+</section>
+<section class="slide" style="background:#fff" data-i="diffusion" data-steps="2">
+<svg class="lines" viewBox="0 0 960 540">
+<defs><marker id="m3" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#5f6b7a"/></marker><marker id="ma3" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#3b5b7a"/></marker><marker id="mg3" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#4f7d5c"/></marker></defs>
+<line class="a fx-fade" data-s="0" style="--d:0.1s" x1="152" y1="180" x2="232" y2="180" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m3)"/>
+<line class="a fx-fade" data-s="0" style="--d:0.18s" x1="340" y1="180" x2="420" y2="180" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m3)"/>
+<line class="a fx-fade" data-s="0" style="--d:0.26s" x1="528" y1="180" x2="608" y2="180" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m3)"/>
+<line class="a fx-fade" data-s="0" style="--d:0.34s" x1="716" y1="180" x2="796" y2="180" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m3)"/>
+<path class="a fx-draw" data-s="1" style="--d:0.1s" pathLength="1" d="M850,262 L850,300 L98,300 L98,262" fill="none" stroke="#4f7d5c" stroke-width="1.6" stroke-dasharray="1" marker-end="url(#mg3)"/>
+</svg>
+<div class="ttl a fx-down" data-s="0">Diffusion in Thirty Seconds</div>
+<div class="el sh a fx-fade" data-s="0" style="--d:0s;left:48px;top:104px;width:864px;height:20px"><div class="tx" style="inset:0;justify-content:center;text-align:left"><p style="font-size:13px;color:#5f6b7a;letter-spacing:.06em;text-transform:uppercase;">Forward process: add a little Gaussian noise, T = 1,000 times</p></div></div>
+<div class="el sh a fx-fade" data-s="0" style="--d:0.00s;left:48px;top:130px;width:100px;height:100px;background:#cfe0ef;border-radius:3px"></div>
+<div class="el sh a fx-fade" data-s="0" style="--d:0.0s;left:28px;top:236px;width:140px;height:22px"><div class="tx" style="inset:0;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;">x<sub>0</sub> clean image</p></div></div>
+<div class="el sh a fx-fade" data-s="0" style="--d:0.08s;left:236px;top:130px;width:100px;height:100px;background:#b4c5d6;border-radius:3px"></div>
+<div class="el sh a fx-fade" data-s="0" style="--d:0.08s;left:216px;top:236px;width:140px;height:22px"><div class="tx" style="inset:0;justify-content:center;text-align:center"><p style="font-size:15px;color:#5f6b7a;">x<sub>1</sub></p></div></div>
+<div class="el sh a fx-fade" data-s="0" style="--d:0.16s;left:424px;top:130px;width:100px;height:100px;background:#98a8b8;border-radius:3px"></div>
+<div class="el sh a fx-fade" data-s="0" style="--d:0.16s;left:404px;top:236px;width:140px;height:22px"><div class="tx" style="inset:0;justify-content:center;text-align:center"><p style="font-size:15px;color:#5f6b7a;">x<sub>2</sub></p></div></div>
+<div class="el sh a fx-fade" data-s="0" style="--d:0.24s;left:612px;top:130px;width:100px;height:100px;background:#7c8a99;border-radius:3px"></div>
+<div class="el sh a fx-fade" data-s="0" style="--d:0.24s;left:592px;top:236px;width:140px;height:22px"><div class="tx" style="inset:0;justify-content:center;text-align:center"><p style="font-size:15px;color:#5f6b7a;">…</p></div></div>
+<div class="el sh a fx-fade" data-s="0" style="--d:0.32s;left:800px;top:130px;width:100px;height:100px;background:#5f6b7a;border-radius:3px"></div>
+<div class="el sh a fx-fade" data-s="0" style="--d:0.32s;left:780px;top:236px;width:140px;height:22px"><div class="tx" style="inset:0;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;">x<sub>T</sub> pure noise</p></div></div>
+<div class="el sh a fx-fade" data-s="1" style="--d:0.6s;left:48px;top:312px;width:864px;height:44px"><div class="tx" style="inset:0;justify-content:center;text-align:center"><p style="font-size:19px;color:#4f7d5c;">Reverse process: a network looks at x<sub>t</sub>, the step t and the class c, and predicts the noise that was added: ε<sub>θ</sub>(x<sub>t</sub>, t, c)</p></div></div>
+<div class="el sh a fx-up" data-s="2" style="left:48px;top:392px;width:864px;height:56px;background:#e1e8f0;border-radius:3px;border-left:4px solid #3b5b7a"><div class="tx" style="inset:10px 14px;justify-content:center;text-align:left"><p style="font-size:17px;color:#3b5b7a;line-height:1.3">That network has always been a U-Net. DiT keeps the standard recipe, DDPM with learned covariance Σ and 1,000 steps, and changes <b>only the network</b>.</p></div></div>
+<div class="pnum">3</div>
+</section>
+<section class="slide" style="background:#fff" data-i="latent" data-steps="3">
+<svg class="lines" viewBox="0 0 960 540">
+<defs><marker id="m4" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#5f6b7a"/></marker><marker id="ma4" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#3b5b7a"/></marker><marker id="mg4" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#4f7d5c"/></marker></defs>
+<line class="a fx-fade" data-s="1" style="--d:0s" x1="172" y1="210" x2="204" y2="210" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m4)"/>
+<line class="a fx-fade" data-s="1" style="--d:0.1s" x1="352" y1="210" x2="384" y2="210" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m4)"/>
+<line class="a fx-fade" data-s="2" style="--d:0s" x1="452" y1="210" x2="484" y2="210" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m4)"/>
+<line class="a fx-fade" data-s="3" style="--d:0s" x1="652" y1="210" x2="684" y2="210" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m4)"/>
+</svg>
+<div class="ttl a fx-down" data-s="0">Work in Latent Space, Not Pixel Space</div>
+<div class="el sh a fx-up" data-s="0" style="--d:0s;left:48px;top:150px;width:120px;height:120px;background:#9db1c6;border-radius:3px;"><div class="tx" style="inset:8px;justify-content:center;text-align:center"><p style="font-size:16px;color:#fff;">image<br>256 × 256 × 3</p></div></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0s;left:208px;top:180px;width:140px;height:60px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:16px;color:#1f2933;">VAE encoder<br><span style="font-size:13px;color:#5f6b7a">frozen, from Stable Diffusion</span></p></div></div>
+<div class="el sh a fx-up" data-s="1" data-mm="latent" style="--d:0.15s;left:388px;top:180px;width:60px;height:60px;background:#cfe0ef;border-radius:3px;border:1.5px solid #3b5b7a;"><div class="tx" style="inset:8px;justify-content:center;text-align:center"><p style="font-size:16px;color:#1f2933;"></p></div></div>
+<div class="el sh a fx-fade" data-s="1" style="--d:0.15s;left:368px;top:246px;width:100px;height:22px"><div class="tx" style="inset:0;justify-content:center;text-align:center"><p style="font-size:13px;color:#5f6b7a;">latent 32 × 32 × 4</p></div></div>
+<div class="el sh a fx-up" data-s="2" style="--d:0s;left:488px;top:170px;width:160px;height:80px;background:#e1e8f0;border-radius:3px;border:1.5px solid #3b5b7a;"><div class="tx" style="inset:8px;justify-content:center;text-align:center"><p style="font-size:19px;color:#3b5b7a;"><b>DiT</b> runs here,<br>in latent space</p></div></div>
+<div class="el sh a fx-up" data-s="3" style="--d:0s;left:688px;top:180px;width:160px;height:60px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:6px;justify-content:center;text-align:center"><p style="font-size:16px;color:#1f2933;">VAE decoder<br><span style="font-size:13px;color:#5f6b7a">back to pixels, once</span></p></div></div>
+<div class="el sh a fx-pop" data-s="1" data-count="0.3" style="--d:0.3s;left:48px;top:296px;width:440px;height:60px;"><div class="tx" style="inset:0px;justify-content:center;text-align:left"><p style="font-size:40px;color:#4f7d5c;">48× fewer values</p></div></div>
+<div class="el sh a fx-fade" data-s="1" style="--d:0.4s;left:48px;top:358px;width:440px;height:22px"><div class="tx" style="inset:0;justify-content:center;text-align:left"><p style="font-size:15px;color:#5f6b7a;">196,608 numbers per image, 4,096 per latent</p></div></div>
+<div class="el sh a fx-fade" data-s="2" style="--d:0.2s;left:488px;top:300px;width:424px;height:60px"><div class="tx" style="inset:0;justify-content:center;text-align:left"><p style="font-size:15px;color:#1f2933;">Same trick as Stable Diffusion (Rombach et al., 2022). DiT borrows the VAE wholesale, weights included, and never trains it.</p></div></div>
+<div class="el sh a fx-up" data-s="3" style="left:48px;top:420px;width:864px;height:52px;background:#e1e8f0;border-radius:3px;border-left:4px solid #3b5b7a"><div class="tx" style="inset:10px 14px;justify-content:center;text-align:left"><p style="font-size:17px;color:#3b5b7a;line-height:1.3">Everything outside the middle box is fixed. The paper's entire contribution is <b>what that box looks like inside</b>.</p></div></div>
+<div class="pnum">4</div>
+</section>
+<section class="slide" style="background:#fff" data-i="patchify" data-steps="4">
+<svg class="lines" viewBox="0 0 960 540">
+<defs><marker id="m5" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#5f6b7a"/></marker><marker id="ma5" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#3b5b7a"/></marker><marker id="mg5" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#4f7d5c"/></marker></defs>
+<line class="a fx-fade" data-s="1" style="--d:0s" x1="214" y1="192" x2="250" y2="192" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m5)"/>
+</svg>
+<div class="ttl a fx-down" data-s="0">Step 1: Cut the Latent into Tokens</div>
+<div class="el sh a fx-fade" data-s="0" data-mm="latent" style="left:48px;top:112px;width:160px;height:160px;background:#3b5b7a;border-radius:3px;overflow:hidden"><div style="position:absolute;left:1px;top:1px;width:38px;height:38px;background:#cfe0ef"></div><div style="position:absolute;left:41px;top:1px;width:38px;height:38px;background:#cfe0ef"></div><div style="position:absolute;left:81px;top:1px;width:38px;height:38px;background:#cfe0ef"></div><div style="position:absolute;left:121px;top:1px;width:38px;height:38px;background:#cfe0ef"></div><div style="position:absolute;left:1px;top:41px;width:38px;height:38px;background:#cfe0ef"></div><div style="position:absolute;left:41px;top:41px;width:38px;height:38px;background:#cfe0ef"></div><div style="position:absolute;left:81px;top:41px;width:38px;height:38px;background:#cfe0ef"></div><div style="position:absolute;left:121px;top:41px;width:38px;height:38px;background:#cfe0ef"></div><div style="position:absolute;left:1px;top:81px;width:38px;height:38px;background:#cfe0ef"></div><div style="position:absolute;left:41px;top:81px;width:38px;height:38px;background:#cfe0ef"></div><div style="position:absolute;left:81px;top:81px;width:38px;height:38px;background:#cfe0ef"></div><div style="position:absolute;left:121px;top:81px;width:38px;height:38px;background:#cfe0ef"></div><div style="position:absolute;left:1px;top:121px;width:38px;height:38px;background:#cfe0ef"></div><div style="position:absolute;left:41px;top:121px;width:38px;height:38px;background:#cfe0ef"></div><div style="position:absolute;left:81px;top:121px;width:38px;height:38px;background:#cfe0ef"></div><div style="position:absolute;left:121px;top:121px;width:38px;height:38px;background:#cfe0ef"></div></div>
+<div class="el sh a fx-fade" data-s="0" style="--d:0s;left:48px;top:278px;width:160px;height:22px"><div class="tx" style="inset:0;justify-content:center;text-align:center"><p style="font-size:13px;color:#5f6b7a;">latent 32 × 32 × 4, p = 8</p></div></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.00s;left:262px;top:178px;width:34px;height:28px;background:#cfe0ef;border-radius:2px"></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.03s;left:302px;top:178px;width:34px;height:28px;background:#cfe0ef;border-radius:2px"></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.06s;left:342px;top:178px;width:34px;height:28px;background:#cfe0ef;border-radius:2px"></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.09s;left:382px;top:178px;width:34px;height:28px;background:#cfe0ef;border-radius:2px"></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.12s;left:422px;top:178px;width:34px;height:28px;background:#cfe0ef;border-radius:2px"></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.15s;left:462px;top:178px;width:34px;height:28px;background:#cfe0ef;border-radius:2px"></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.18s;left:502px;top:178px;width:34px;height:28px;background:#cfe0ef;border-radius:2px"></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.21s;left:542px;top:178px;width:34px;height:28px;background:#cfe0ef;border-radius:2px"></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.24s;left:582px;top:178px;width:34px;height:28px;background:#cfe0ef;border-radius:2px"></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.27s;left:622px;top:178px;width:34px;height:28px;background:#cfe0ef;border-radius:2px"></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.30s;left:662px;top:178px;width:34px;height:28px;background:#cfe0ef;border-radius:2px"></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.33s;left:702px;top:178px;width:34px;height:28px;background:#cfe0ef;border-radius:2px"></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.36s;left:742px;top:178px;width:34px;height:28px;background:#cfe0ef;border-radius:2px"></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.39s;left:782px;top:178px;width:34px;height:28px;background:#cfe0ef;border-radius:2px"></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.42s;left:822px;top:178px;width:34px;height:28px;background:#cfe0ef;border-radius:2px"></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.45s;left:862px;top:178px;width:34px;height:28px;background:#cfe0ef;border-radius:2px"></div>
+<div class="el sh a fx-fade" data-s="1" style="--d:0.5s;left:262px;top:212px;width:640px;height:22px"><div class="tx" style="inset:0;justify-content:center;text-align:left"><p style="font-size:14px;color:#1f2933;">T = 16 tokens, each a flattened 8 × 8 × 4 patch, linearly embedded to width d</p></div></div>
+<div class="el sh a fx-fade" data-s="2" style="--d:0s;left:262px;top:240px;width:640px;height:22px"><div class="tx" style="inset:0;justify-content:center;text-align:left"><p style="font-size:14px;color:#3b5b7a;">+ sine-cosine position embedding, as in ViT, not learned</p></div></div>
+<div class="el a fx-up" data-s="3" style="left:48px;top:300px;width:864px"><table class="cmp num tight" style="margin:0"><tr><td>Patch size p</td><td>Tokens T = (32 / p)<sup>2</sup></td><td>Compute (Gflops)</td><td>Parameters</td></tr><tr><td>8</td><td>16</td><td>1×</td><td>same</td></tr><tr><td>4</td><td>64</td><td>about 4×</td><td>same</td></tr><tr><td class="hl">2</td><td class="hl">256</td><td class="hl">about 16×</td><td class="hl">same</td></tr></table></div>
+<div class="el sh a fx-up" data-s="4" style="left:48px;top:450px;width:864px;height:46px;background:#e1e8f0;border-radius:3px;border-left:4px solid #3b5b7a"><div class="tx" style="inset:10px 14px;justify-content:center;text-align:left"><p style="font-size:16px;color:#3b5b7a;line-height:1.3">Patch size is a <b>compute dial</b>: it changes Gflops by about 4× per step and leaves the parameter count untouched.</p></div></div>
+<div class="src">Peebles and Xie, 2023, Sec. 3.2 and Table 1. Compute ratios are approximate; attention adds a quadratic term in T.</div>
+<div class="pnum">5</div>
+</section>
+<section class="slide" style="background:#fff" data-i="cond" data-steps="5">
+<div class="ttl a fx-down" data-s="0">Step 2: How Should t and c Enter the Network?</div>
+<div class="el sh a fx-up" data-s="1" style="left:48px;top:104px;width:420px;height:152px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:14px;justify-content:flex-start;text-align:left"><p style="font-size:19px;color:#3b5b7a;margin-bottom:8px">In-context conditioning</p><p style="font-size:16px;color:#1f2933;line-height:1.4">Append the embeddings of t and c as two extra tokens, like the cls token in ViT, and drop them at the output. Almost no extra Gflops.</p></div></div>
+<div class="el sh a fx-up" data-s="2" style="left:492px;top:104px;width:420px;height:152px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:14px;justify-content:flex-start;text-align:left"><p style="font-size:19px;color:#3b5b7a;margin-bottom:8px">Cross-attention</p><p style="font-size:16px;color:#1f2933;line-height:1.4">Add a cross-attention layer after self-attention in every block; image tokens attend to the (t, c) embeddings. About 15% more Gflops.</p></div></div>
+<div class="el sh a fx-up" data-s="3" style="left:48px;top:270px;width:420px;height:152px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:14px;justify-content:flex-start;text-align:left"><p style="font-size:19px;color:#3b5b7a;margin-bottom:8px">Adaptive LayerNorm (adaLN)</p><p style="font-size:16px;color:#1f2933;line-height:1.4">Regress the LayerNorm scale γ and shift β from the sum of the t and c embeddings instead of learning them. Adds the least compute of all four.</p></div></div>
+<div class="el sh a fx-up" data-s="4" style="left:492px;top:270px;width:420px;height:152px;background:#e1e8f0;border-radius:3px;border:1.5px solid #3b5b7a;"><div class="tx" style="inset:14px;justify-content:flex-start;text-align:left"><p style="font-size:19px;color:#3b5b7a;margin-bottom:8px">adaLN-Zero</p><p style="font-size:16px;color:#1f2933;line-height:1.4">adaLN plus a scale α applied to each residual branch, also regressed from t + c, with the regressor zero-initialised so α = 0 at the start of training.</p></div></div>
+<div class="el sh a fx-up" data-s="5" style="left:48px;top:436px;width:864px;height:56px;background:#e1e8f0;border-radius:3px;border-left:4px solid #3b5b7a"><div class="tx" style="inset:10px 14px;justify-content:center;text-align:left"><p style="font-size:16px;color:#3b5b7a;line-height:1.3">adaLN-Zero gives the <b>lowest FID at every model size</b>, for almost no compute. It is the one real architectural novelty in the paper.</p></div></div>
+<div class="src">Peebles and Xie, 2023, Sec. 3.2 and Fig. 5 (FID-50K over training for the four variants on DiT-XL/2).</div>
+<div class="pnum">6</div>
+</section>
+<section class="slide" style="background:#fff" data-i="block" data-steps="3">
+<div class="ttl a fx-down" data-s="0">adaLN-Zero: Every Block Starts as the Identity</div>
+<svg class="lines" viewBox="0 0 960 540">
+<defs><marker id="m7" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#5f6b7a"/></marker><marker id="ma7" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#3b5b7a"/></marker><marker id="mg7" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#4f7d5c"/></marker></defs>
+<line class="a fx-fade" data-s="1" style="--d:0s" x1="48" y1="208.0" x2="664" y2="208.0" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m7)"/>
+<path class="a fx-draw" data-s="1" style="--d:0.3s" pathLength="1" d="M93,186 L93,164 L668,164 L668,190" fill="none" stroke="#5f6b7a" stroke-width="1.3" stroke-dasharray="1" marker-end="url(#m7)"/>
+<path class="a fx-draw" data-s="1" style="--d:0.4s" pathLength="1" d="M668,230 L668,262 L110,262 L110,318.0 L154,318.0" fill="none" stroke="#5f6b7a" stroke-width="1.3" stroke-dasharray="1" marker-end="url(#m7)"/>
+<line class="a fx-fade" data-s="1" style="--d:0.5s" x1="158" y1="318.0" x2="664" y2="318.0" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m7)"/>
+<path class="a fx-draw" data-s="1" style="--d:0.6s" pathLength="1" d="M110,318.0 L110,372 L668,372 L668,344" fill="none" stroke="#5f6b7a" stroke-width="1.3" stroke-dasharray="1" marker-end="url(#m7)"/>
+<line class="a fx-fade" data-s="1" style="--d:0.7s" x1="686" y1="318.0" x2="716" y2="318.0" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m7)"/>
+<line class="a fx-fade" data-s="2" style="--d:.3s" x1="328" y1="150" x2="328" y2="184" stroke="#3b5b7a" stroke-width="1.2" stroke-dasharray="3 3"/>
+<line class="a fx-fade" data-s="2" style="--d:.3s" x1="328" y1="230" x2="328" y2="294" stroke="#3b5b7a" stroke-width="1.2" stroke-dasharray="3 3"/>
+<line class="a fx-fade" data-s="2" style="--d:.3s" x1="578" y1="150" x2="578" y2="184" stroke="#3b5b7a" stroke-width="1.2" stroke-dasharray="3 3"/>
+<line class="a fx-fade" data-s="2" style="--d:.3s" x1="578" y1="230" x2="578" y2="294" stroke="#3b5b7a" stroke-width="1.2" stroke-dasharray="3 3"/>
+<line class="a fx-fade" data-s="2" style="--d:0s" x1="282" y1="126" x2="322" y2="126" stroke="#3b5b7a" stroke-width="1.3" marker-end="url(#ma7)"/>
+<line class="a fx-fade" data-s="2" style="--d:0.1s" x1="458" y1="126" x2="490" y2="126" stroke="#3b5b7a" stroke-width="1.3" marker-end="url(#ma7)"/>
+</svg>
+<div class="el sh a fx-fade" data-s="1" style="--d:0s;left:48px;top:186px;width:90px;height:44px;background:#fff;border-radius:3px;border:1px solid #c5cbd3;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;">tokens in</p></div></div>
+<div class="el sh a fx-fade" data-s="1" style="--d:0s;left:158px;top:186px;width:100px;height:44px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;line-height:1.15;">LayerNorm</p></div></div>
+<div class="el sh a fx-pop" data-s="2" style="--d:0s;left:278px;top:186px;width:100px;height:44px;background:#e1e8f0;border-radius:3px;border:1.5px solid #3b5b7a;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:14px;color:#3b5b7a;line-height:1.15;">scale, shift<br>γ<sub>1</sub>, β<sub>1</sub></p></div></div>
+<div class="el sh a fx-fade" data-s="1" style="--d:0s;left:398px;top:186px;width:120px;height:44px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:14px;color:#1f2933;line-height:1.15;">multi-head<br>self-attention</p></div></div>
+<div class="el sh a fx-pop" data-s="2" style="--d:0.1s;left:538px;top:186px;width:80px;height:44px;background:#e1e8f0;border-radius:3px;border:1.5px solid #3b5b7a;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:14px;color:#3b5b7a;line-height:1.15;">scale α<sub>1</sub></p></div></div>
+<div class="el sh a fx-fade" data-s="1" style="--d:0s;left:650px;top:190px;width:36px;height:36px;background:#fff;border-radius:3px;border:1.5px solid #1f2933;border-radius:50%;"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:22px;color:#1f2933;">+</p></div></div>
+<div class="el sh a fx-fade" data-s="1" style="--d:0s;left:158px;top:296px;width:100px;height:44px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;line-height:1.15;">LayerNorm</p></div></div>
+<div class="el sh a fx-pop" data-s="2" style="--d:0.2s;left:278px;top:296px;width:100px;height:44px;background:#e1e8f0;border-radius:3px;border:1.5px solid #3b5b7a;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:14px;color:#3b5b7a;line-height:1.15;">scale, shift<br>γ<sub>2</sub>, β<sub>2</sub></p></div></div>
+<div class="el sh a fx-fade" data-s="1" style="--d:0s;left:398px;top:296px;width:120px;height:44px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:14px;color:#1f2933;line-height:1.15;">pointwise MLP</p></div></div>
+<div class="el sh a fx-pop" data-s="2" style="--d:0.3s;left:538px;top:296px;width:80px;height:44px;background:#e1e8f0;border-radius:3px;border:1.5px solid #3b5b7a;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:14px;color:#3b5b7a;line-height:1.15;">scale α<sub>2</sub></p></div></div>
+<div class="el sh a fx-fade" data-s="1" style="--d:0s;left:650px;top:300px;width:36px;height:36px;background:#fff;border-radius:3px;border:1.5px solid #1f2933;border-radius:50%;"><div class="tx" style="inset:0px;justify-content:center;text-align:center"><p style="font-size:22px;color:#1f2933;">+</p></div></div>
+<div class="el sh a fx-fade" data-s="1" style="--d:0s;left:720px;top:296px;width:90px;height:44px;background:#fff;border-radius:3px;border:1px solid #c5cbd3;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;">tokens out</p></div></div>
+<div class="el sh a fx-fade" data-s="1" style="--d:0.2s;left:730px;top:186px;width:182px;height:44px"><div class="tx" style="inset:0;justify-content:center;text-align:left"><p style="font-size:14px;color:#5f6b7a;font-style:italic;">a standard pre-norm<br>transformer block</p></div></div>
+<div class="el sh a fx-up" data-s="2" style="--d:0s;left:48px;top:104px;width:100px;height:44px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;">timestep t</p></div></div>
+<div class="el sh a fx-up" data-s="2" style="--d:0.05s;left:160px;top:104px;width:110px;height:44px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;">class label c</p></div></div>
+<div class="el sh a fx-fade" data-s="2" style="--d:0s;left:148px;top:104px;width:12px;height:44px"><div class="tx" style="inset:0;justify-content:center;text-align:center"><p style="font-size:18px;color:#1f2933;">+</p></div></div>
+<div class="el sh a fx-up" data-s="2" style="--d:0.1s;left:330px;top:104px;width:120px;height:44px;background:#e1e8f0;border-radius:3px;border:1.5px solid #3b5b7a;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#3b5b7a;">SiLU, linear</p></div></div>
+<div class="el sh a fx-fade" data-s="2" style="--d:0.2s;left:498px;top:104px;width:414px;height:44px"><div class="tx" style="inset:0;justify-content:center;text-align:left"><p style="font-size:17px;color:#3b5b7a;">six vectors per block: γ<sub>1</sub>, β<sub>1</sub>, α<sub>1</sub>, γ<sub>2</sub>, β<sub>2</sub>, α<sub>2</sub></p></div></div>
+<div class="el sh a fx-up" data-s="3" style="left:48px;top:402px;width:864px;height:68px;background:#e1e8f0;border-radius:3px;border-left:4px solid #3b5b7a"><div class="tx" style="inset:10px 14px;justify-content:center;text-align:left"><p style="font-size:16px;color:#3b5b7a;line-height:1.3">The regressor for α is <b>initialised to zero</b>, so at step 0 each block outputs exactly its input and the whole DiT is the identity. A ResNet training trick; it is the entire difference between adaLN and adaLN-Zero.</p></div></div>
+<div class="src">Peebles and Xie, 2023, Fig. 3 (DiT block with adaLN-Zero) and Sec. 3.2; zero-init follows Goyal et al., 2017.</div>
+<div class="pnum">7</div>
+</section>
+<section class="slide" style="background:#fff" data-i="model" data-steps="3">
+<svg class="lines" viewBox="0 0 960 540">
+<defs><marker id="m8" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#5f6b7a"/></marker><marker id="ma8" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#3b5b7a"/></marker><marker id="mg8" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#4f7d5c"/></marker></defs>
+<line class="a fx-fade" data-s="1" style="--d:0.0s" x1="178.0" y1="134" x2="193.2" y2="134" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m8)"/>
+<line class="a fx-fade" data-s="1" style="--d:0.1s" x1="325.2" y1="134" x2="340.4" y2="134" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m8)"/>
+<line class="a fx-fade" data-s="1" style="--d:0.2s" x1="472.4" y1="134" x2="487.6" y2="134" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m8)"/>
+<line class="a fx-fade" data-s="1" style="--d:0.3s" x1="619.6" y1="134" x2="634.8" y2="134" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m8)"/>
+<line class="a fx-fade" data-s="1" style="--d:0.4s" x1="766.8" y1="134" x2="782.0" y2="134" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m8)"/>
+</svg>
+<div class="ttl a fx-down" data-s="0">The Whole DiT, and Its Four Sizes</div>
+<div class="el sh a fx-up" data-s="0" style="--d:0s;left:48.0px;top:108px;width:128px;height:52px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;line-height:1.15;">noised latent<br>32 × 32 × 4</p></div></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.1s;left:195.2px;top:108px;width:128px;height:52px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;line-height:1.15;">patchify<br>+ position emb.</p></div></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.2s;left:342.4px;top:108px;width:128px;height:52px;background:#e1e8f0;border-radius:3px;border:1.5px solid #3b5b7a;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#3b5b7a;line-height:1.15;">N × DiT block</p></div></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.3s;left:489.6px;top:108px;width:128px;height:52px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;line-height:1.15;">LayerNorm<br>+ linear</p></div></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.4s;left:636.8px;top:108px;width:128px;height:52px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;line-height:1.15;">unpatchify</p></div></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.5s;left:784.0px;top:108px;width:128px;height:52px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:4px;justify-content:center;text-align:center"><p style="font-size:15px;color:#1f2933;line-height:1.15;">ε and Σ<br>32 × 32 × 4 each</p></div></div>
+<div class="el sh a fx-fade" data-s="1" style="--d:0.6s;left:48px;top:166px;width:864px;height:20px"><div class="tx" style="inset:0;justify-content:center;text-align:left"><p style="font-size:13px;color:#5f6b7a;">the decoder predicts both the noise ε and the covariance Σ for every latent position, then they are reshaped back into a 32 × 32 × 4 grid</p></div></div>
+<div class="el a fx-up" data-s="2" style="left:48px;top:196px;width:864px"><table class="cmp num" style="font-size:17px;margin:0"><tr><td>Model</td><td>Layers N</td><td>Hidden size d</td><td>Heads</td><td>Parameters</td><td>Gflops (p = 2)</td></tr><tr><td>DiT-S</td><td>12</td><td>384</td><td>6</td><td>33M</td><td>6.1</td></tr><tr><td>DiT-B</td><td>12</td><td>768</td><td>12</td><td>130M</td><td>23.0</td></tr><tr><td>DiT-L</td><td>24</td><td>1,024</td><td>16</td><td>458M</td><td>80.7</td></tr><tr><td class="hl">DiT-XL</td><td class="hl">28</td><td class="hl">1,152</td><td class="hl">16</td><td class="hl">675M</td><td class="hl">118.6</td></tr></table></div>
+<div class="el sh a fx-up" data-s="3" style="left:48px;top:428px;width:864px;height:48px;background:#e1e8f0;border-radius:3px;border-left:4px solid #3b5b7a"><div class="tx" style="inset:10px 14px;justify-content:center;text-align:left"><p style="font-size:16px;color:#3b5b7a;line-height:1.3">Four sizes × three patch sizes = <b>twelve models</b>, all trained the same way on ImageNet. Everything but adaLN-Zero and the decoder is a stock ViT.</p></div></div>
+<div class="src">Peebles and Xie, 2023, Table 1. Sizes follow the ViT S/B/L configurations; Gflops are for 256 × 256 images with patch size 2.</div>
+<div class="pnum">8</div>
+</section>
+<section class="slide" style="background:#fff" data-i="gflops" data-steps="3">
+<svg class="lines" viewBox="0 0 960 540">
+<defs><marker id="m9" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#5f6b7a"/></marker><marker id="ma9" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#3b5b7a"/></marker><marker id="mg9" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#4f7d5c"/></marker></defs>
+<line class="a fx-fade" data-s="1" style="--d:0.3s" x1="326" y1="215" x2="340" y2="215" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m9)"/>
+<line class="a fx-fade" data-s="1" style="--d:0.4s" x1="620" y1="215" x2="634" y2="215" stroke="#5f6b7a" stroke-width="1.3" marker-end="url(#m9)"/>
+</svg>
+<div class="ttl a fx-down" data-s="0">Gflops Predict Quality, Parameters Do Not</div>
+<div class="bd">
+<p class="sub a fx-fade" data-s="0">Hold DiT-XL at 675M parameters, the same weights, and only shrink the patch.</p>
+</div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.00s;left:48px;top:160px;width:276px;height:110px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:12px 16px;justify-content:center;text-align:left"><p style="font-size:28px;color:#3b5b7a;margin-bottom:4px">DiT-XL/8</p><p style="font-size:16px;color:#1f2933">16 tokens · 1× compute</p></div></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.12s;left:342px;top:160px;width:276px;height:110px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:12px 16px;justify-content:center;text-align:left"><p style="font-size:28px;color:#3b5b7a;margin-bottom:4px">DiT-XL/4</p><p style="font-size:16px;color:#1f2933">64 tokens · about 4×</p></div></div>
+<div class="el sh a fx-up" data-s="1" style="--d:0.24s;left:636px;top:160px;width:276px;height:110px;background:#e1e8f0;border-radius:3px;border:1.5px solid #3b5b7a;"><div class="tx" style="inset:12px 16px;justify-content:center;text-align:left"><p style="font-size:28px;color:#3b5b7a;margin-bottom:4px">DiT-XL/2</p><p style="font-size:16px;color:#1f2933">256 tokens · about 16×</p></div></div>
+<div class="el sh a fx-fade" data-s="1" style="--d:0.5s;left:48px;top:276px;width:864px;height:24px"><div class="tx" style="inset:0;justify-content:center;text-align:left"><p style="font-size:16px;color:#1f2933;">FID drops sharply at each step, at every training budget, with the parameter count unchanged.</p></div></div>
+<div class="el sh a fx-pop" data-s="2" data-count="0.2" style="--d:0s;left:48px;top:318px;width:200px;height:70px;"><div class="tx" style="inset:0px;justify-content:center;text-align:left"><p style="font-size:56px;color:#4f7d5c;">−0.93</p></div></div>
+<div class="el sh a fx-fade" data-s="2" style="--d:0.3s;left:250px;top:318px;width:662px;height:70px"><div class="tx" style="inset:0;justify-content:center;text-align:left"><p style="font-size:16px;color:#1f2933;">correlation between a model's Gflops and its FID-50K, across all twelve DiTs at 400K training steps. Depth, width and token count all move FID along the same curve.</p></div></div>
+<div class="el sh a fx-up" data-s="3" style="left:48px;top:430px;width:864px;height:46px;background:#e1e8f0;border-radius:3px;border-left:4px solid #3b5b7a"><div class="tx" style="inset:10px 14px;justify-content:center;text-align:left"><p style="font-size:17px;color:#3b5b7a;line-height:1.3">What a model <b>spends per forward pass</b>, not how many weights it stores, decides sample quality.</p></div></div>
+<div class="src">Peebles and Xie, 2023, Fig. 6 and Fig. 8 (FID-50K vs. transformer Gflops; XL/8, XL/4, XL/2 at equal parameters).</div>
+<div class="pnum">9</div>
+</section>
+<section class="slide" style="background:#fff" data-i="sampling" data-steps="3">
+<div class="ttl a fx-down" data-s="0">Sampling Steps Cannot Replace Model Compute</div>
+<div class="el sh a fx-fade" data-s="0" style="--d:0s;left:48px;top:108px;width:864px;height:24px"><div class="tx" style="inset:0;justify-content:center;text-align:left"><p style="font-size:18px;color:#5f6b7a;">Can a smaller model catch up by denoising more carefully? Compare total compute per generated image.</p></div></div>
+<div class="el sh a fx-up" data-s="1" style="left:48px;top:148px;width:420px;height:230px;background:#eceef1;border-radius:3px;"><div class="tx" style="inset:16px 20px;justify-content:flex-start;text-align:left"><p style="font-size:21px;color:#3b5b7a;margin-bottom:14px">DiT-L/2 · 1,000 sampling steps</p><p class="lab" style="margin-bottom:2px">sampling compute per image</p><p class="num" style="font-size:40px;color:#9b3b3b;margin-bottom:12px">80.7 <span style="font-size:18px;color:#5f6b7a">Tflops</span></p><p class="lab" style="margin-bottom:2px">FID-50K</p><p class="num" style="font-size:40px;color:#9b3b3b">25.9 <span style="font-size:18px;color:#5f6b7a"></span></p></div></div>
+<div class="el sh a fx-up" data-s="2" style="left:492px;top:148px;width:420px;height:230px;background:#e1e8f0;border-radius:3px;border:1.5px solid #3b5b7a;"><div class="tx" style="inset:16px 20px;justify-content:flex-start;text-align:left"><p style="font-size:21px;color:#3b5b7a;margin-bottom:14px">DiT-XL/2 · 128 sampling steps</p><p class="lab" style="margin-bottom:2px">sampling compute per image</p><p class="num" style="font-size:40px;color:#4f7d5c;margin-bottom:12px">15.2 <span style="font-size:18px;color:#5f6b7a">Tflops</span></p><p class="lab" style="margin-bottom:2px">FID-50K</p><p class="num" style="font-size:40px;color:#4f7d5c">23.7 <span style="font-size:18px;color:#5f6b7a">better</span></p></div></div>
+<div class="el sh a fx-up" data-s="3" style="left:48px;top:404px;width:864px;height:48px;background:#e1e8f0;border-radius:3px;border-left:4px solid #3b5b7a"><div class="tx" style="inset:10px 14px;justify-content:center;text-align:left"><p style="font-size:17px;color:#3b5b7a;line-height:1.3">Over <b>5× less</b> sampling compute and a better FID. Extra denoising steps do not substitute for a bigger network.</p></div></div>
+<div class="src">Peebles and Xie, 2023, Fig. 10. Both models at 400K training steps, no classifier-free guidance.</div>
+<div class="pnum">10</div>
+</section>
+<section class="slide" style="background:#fff" data-i="sota" data-steps="3">
+<div class="ttl a fx-down" data-s="0">State of the Art on ImageNet, Without a U-Net</div>
+<div class="bd">
+<p class="sub a fx-fade" data-s="0">Class-conditional ImageNet 256 × 256, FID-50K, lower is better. -G rows use classifier-free guidance.</p>
+<table class="cmp num a fx-up" data-s="0" style="margin-top:14px"><tr><td>Model</td><td>Backbone</td><td>Gflops</td><td class="hl">FID</td></tr><tr><td>ADM-G, ADM-U (Dhariwal and Nichol, 2021)</td><td>U-Net</td><td>742</td><td class="hl">3.94</td></tr><tr><td>LDM-4-G (Rombach et al., 2022)</td><td>U-Net</td><td>103.6</td><td class="hl">3.60</td></tr><tr><td><b>DiT-XL/2-G</b> (this paper)</td><td>Transformer</td><td>118.6</td><td class="hl" style="position:relative;height:50px"><span data-o="1">?</span><span class="a fx-pop" data-s="1" style="position:absolute;right:12px;top:10px;color:#4f7d5c"><b>2.27</b></span></td></tr></table>
+</div>
+<div class="el sh a fx-fade" data-s="2" style="--d:0s;left:48px;top:356px;width:864px;height:26px"><div class="tx" style="inset:0;justify-content:center;text-align:left"><p style="font-size:17px;color:#1f2933;">At 512 × 512: DiT-XL/2-G reaches FID 3.04 against 3.85 for ADM-G, ADM-U, again the best reported result.</p></div></div>
+<div class="el sh a fx-up" data-s="3" style="left:48px;top:400px;width:864px;height:52px;background:#e1e8f0;border-radius:3px;border-left:4px solid #3b5b7a"><div class="tx" style="inset:10px 14px;justify-content:center;text-align:left"><p style="font-size:17px;color:#3b5b7a;line-height:1.3">A diffusion model with <b>no U-Net</b> is the new state of the art, at about <b>6× fewer Gflops</b> than ADM and roughly the same as LDM.</p></div></div>
+<div class="src">Peebles and Xie, 2023, Table 2 and Table 3. DiT-XL/2 trained for 7M steps at 256 × 256; -G rows at guidance scale 1.50.</div>
+<div class="pnum">11</div>
+</section>
+<section class="slide" style="background:#fff" data-i="impact" data-steps="5">
+<div class="ttl a fx-down" data-s="0">Discussion: Did the Transformer Take Over?</div>
+<div class="el sh a fx-up" data-s="1" style="left:48px;top:104px;width:420px;height:152px;background:#eceef1;border-radius:3px"><div class="tx" style="inset:14px;justify-content:flex-start;text-align:left"><p style="font-size:19px;color:#3b5b7a;margin-bottom:8px">Sora and video</p><p style="font-size:16px;color:#1f2933;line-height:1.4">OpenAI's Sora (2024) is a diffusion transformer over spacetime patches of a video latent; its technical report cites DiT as the backbone it scales.</p></div></div>
+<div class="el sh a fx-up" data-s="2" style="left:492px;top:104px;width:420px;height:152px;background:#eceef1;border-radius:3px"><div class="tx" style="inset:14px;justify-content:flex-start;text-align:left"><p style="font-size:19px;color:#3b5b7a;margin-bottom:8px">Stable Diffusion 3 and Flux</p><p style="font-size:16px;color:#1f2933;line-height:1.4">SD3 (2024) introduced MMDiT, a two-stream DiT in which text and image tokens have separate weights but attend jointly. Flux (2024) and later models kept the design.</p></div></div>
+<div class="el sh a fx-up" data-s="3" style="left:48px;top:270px;width:420px;height:152px;background:#eceef1;border-radius:3px"><div class="tx" style="inset:14px;justify-content:flex-start;text-align:left"><p style="font-size:19px;color:#3b5b7a;margin-bottom:8px">Follow-ups on the same backbone</p><p style="font-size:16px;color:#1f2933;line-height:1.4">SiT (2024) swaps DDPM for flow matching on an unchanged DiT and improves FID. REPA (2024) aligns DiT features with DINOv2 and trains many times faster.</p></div></div>
+<div class="el sh a fx-up" data-s="4" style="left:492px;top:270px;width:420px;height:152px;background:#f4e7e7;border-radius:3px"><div class="tx" style="inset:14px;justify-content:flex-start;text-align:left"><p style="font-size:19px;color:#9b3b3b;margin-bottom:8px">Remaining weaknesses</p><p style="font-size:16px;color:#1f2933;line-height:1.4">Only class-conditional ImageNet; depends on a frozen Stable Diffusion VAE; attention is quadratic in tokens, so patch 2 is costly at high resolution; FID is the only metric.</p></div></div>
+<div class="el sh a fx-up" data-s="5" style="left:48px;top:438px;width:864px;height:46px;background:#e1e8f0;border-radius:3px;border-left:4px solid #3b5b7a"><div class="tx" style="inset:10px 14px;justify-content:center;text-align:left"><p style="font-size:16px;color:#3b5b7a;line-height:1.3">Within two years the diffusion transformer became the <b>default backbone</b> for image and video generation.</p></div></div>
+<div class="src">Sources: OpenAI Sora technical report (2024); Esser et al., SD3 (ICML 2024); Black Forest Labs, Flux (2024); Ma et al., SiT (ECCV 2024); Yu et al., REPA (ICLR 2025).</div>
+<div class="pnum">12</div>
+</section>
+<section class="slide" style="background:#fff" data-i="questions" data-steps="5">
+<div class="ttl a fx-down" data-s="0">Questions for Discussion</div>
+<div class="el sh a fx-growy" data-s="1" style="left:48px;top:108px;width:6px;height:54px;background:#3b5b7a"></div>
+<div class="el sh a fx-left" data-s="1" style="--d:.1s;left:68px;top:108px;width:844px;height:54px"><div class="tx" style="inset:0;justify-content:center"><p style="font-size:19px;line-height:1.35;color:#1f2933"><b style="color:#3b5b7a">1.</b>&nbsp;&nbsp;Was the U-Net's inductive bias ever necessary, or did data and compute simply grow past the point where it mattered?</p></div></div>
+<div class="el sh a fx-growy" data-s="2" style="left:48px;top:174px;width:6px;height:54px;background:#3b5b7a"></div>
+<div class="el sh a fx-left" data-s="2" style="--d:.1s;left:68px;top:174px;width:844px;height:54px"><div class="tx" style="inset:0;justify-content:center"><p style="font-size:19px;line-height:1.35;color:#1f2933"><b style="color:#3b5b7a">2.</b>&nbsp;&nbsp;adaLN handles one class label. What should conditioning look like for a 77-token text prompt, and is MMDiT the right answer?</p></div></div>
+<div class="el sh a fx-growy" data-s="3" style="left:48px;top:240px;width:6px;height:54px;background:#3b5b7a"></div>
+<div class="el sh a fx-left" data-s="3" style="--d:.1s;left:68px;top:240px;width:844px;height:54px"><div class="tx" style="inset:0;justify-content:center"><p style="font-size:19px;line-height:1.35;color:#1f2933"><b style="color:#3b5b7a">3.</b>&nbsp;&nbsp;Patch 2 costs about 16× patch 8. Is quadratic attention over latent tokens sustainable at 1024 × 1024 or for a minute of video?</p></div></div>
+<div class="el sh a fx-growy" data-s="4" style="left:48px;top:306px;width:6px;height:54px;background:#3b5b7a"></div>
+<div class="el sh a fx-left" data-s="4" style="--d:.1s;left:68px;top:306px;width:844px;height:54px"><div class="tx" style="inset:0;justify-content:center"><p style="font-size:19px;line-height:1.35;color:#1f2933"><b style="color:#3b5b7a">4.</b>&nbsp;&nbsp;Quality tracked Gflops almost perfectly here. Where should the next 10× go: depth, width, more tokens or more sampling steps?</p></div></div>
+<div class="el sh a fx-growy" data-s="5" style="left:48px;top:372px;width:6px;height:54px;background:#3b5b7a"></div>
+<div class="el sh a fx-left" data-s="5" style="--d:.1s;left:68px;top:372px;width:844px;height:54px"><div class="tx" style="inset:0;justify-content:center"><p style="font-size:19px;line-height:1.35;color:#1f2933"><b style="color:#3b5b7a">5.</b>&nbsp;&nbsp;The paper reports FID only. Would the ranking of U-Net versus DiT change under human preference or text-alignment metrics?</p></div></div>
+<div class="pnum">13</div>
+</section>
+<section class="slide" style="background:#fff" data-i="takeaways" data-steps="2">
+<div class="ttl a fx-down" data-s="0">Takeaways</div>
+<div class="bd">
+<div class="pts a fx-up" data-s="0">
+<div class="pt"><b>Architecture</b>Replace the U-Net with a ViT over latent patches; inject t and c with adaLN-Zero.</div>
+<div class="pt"><b>Scaling</b>FID tracks forward-pass Gflops (correlation −0.93); patch size is a compute dial independent of parameters.</div>
+<div class="pt"><b>Result</b>DiT-XL/2 reaches FID 2.27 on ImageNet 256 × 256, state of the art, at about 6× fewer Gflops than ADM.</div>
+<div class="pt"><b>Legacy</b>Sora, Stable Diffusion 3 and Flux are all diffusion transformers.</div>
+</div>
+<p class="sub a fx-up" data-s="1" style="margin-top:22px">Paper, code and pretrained weights: <i>github.com/facebookresearch/DiT</i></p>
+<p class="a fx-up" data-s="2" style="margin-top:22px;font-size:32px;color:#3b5b7a">Thank you! Questions?</p>
+</div>
+<div class="pnum">14</div>
+</section>
+</div></div>
+<div id="notes"><div id="pstepbar"><div id="pstepdots"></div><div id="psteptext"></div></div><h4>Speaker notes</h4><div id="notesText"></div></div>
+<div id="grid"></div>
+<div id="pbar">
+  <span class="big" id="pcount"></span><span id="psteps" class="dim"></span>
+  <span class="sp"></span>
+  <span class="dim">Elapsed</span><span class="big" id="ptimer" title="Click to reset">00:00</span>
+  <span class="dim">Clock</span><span class="big" id="pclock"></span>
+  <button id="pSmaller" title="Smaller notes">A−</button><button id="pBigger" title="Larger notes">A+</button>
+</div>
+<div id="pnext"><div id="pnextLab">Next</div><div id="pnextBox"></div></div>
+<div id="bar">
+  <button id="prev" title="Previous (←)" aria-label="Previous slide">‹</button>
+  <span id="count"></span>
+  <button id="next" title="Next (→)" aria-label="Next step">›</button>
+  <span id="steps" aria-hidden="true"></span>
+  <div id="prog"><i></i></div>
+  <span id="hint">← → step · Shift+← → slide · P presenter · N notes · G overview · A animation · F fullscreen</span>
+  <button id="bNotes" title="Speaker notes (N)">Notes</button>
+  <button id="bPres" title="Open or close the presenter view (P)">Presenter</button>
+  <button id="bGrid" title="Overview (G)">Grid</button>
+  <button id="bAnim" class="act" title="Animations on/off (A)">Anim</button>
+  <button id="bFs" title="Fullscreen (F)">⛶</button>
+</div>
+<script>
+const NOTES = [
+ "Hi everyone, I'm Jane. Today's paper is Scalable Diffusion Models with Transformers, by Bill Peebles and Saining Xie, published at ICCV 2023. Most people know it by the name of the model it introduces, DiT, the Diffusion Transformer. The paper asks a very simple question: does a diffusion model actually need a U-Net, or can a plain transformer do the job, and do it better as we scale? I'll give you the architecture in detail, the scaling results, and then we'll talk about what happened after, because this paper quietly became the backbone of Sora and Stable Diffusion 3.",
+ "Let's start with the state of the world in 2022. Every diffusion model that mattered, from the original DDPM, through ADM, which was the model behind \"diffusion beats GANs\", to Stable Diffusion, used a convolutional U-Net as the denoising network. Meanwhile classification, detection and segmentation had all moved to Vision Transformers. ★ So the question the paper asks is this: is the U-Net's inductive bias, convolutions, downsampling, skip connections, actually necessary for diffusion, or is it just a habit we inherited? ★ Spoiler: it's a habit. A plain ViT not only matches the U-Net, it beats it, and more importantly it keeps getting better as you add compute. Let's see how.",
+ "Thirty seconds of background so we share vocabulary. A diffusion model has two processes. The forward process is fixed: take a clean image x zero and add a little Gaussian noise, a thousand times, until you reach pure noise x T. ★ The reverse process is what we learn. A network looks at a noisy image x t, the step index t, and here the ImageNet class label c, and predicts the noise that was added. Subtract a bit of it, repeat, and noise turns into an image. ★ The thing to hold onto is that this network has always been a U-Net. DiT does not touch the diffusion recipe at all; it uses the standard DDPM setup from Nichol and Dhariwal, with learned covariance and a thousand steps. The only thing that changes is the network.",
+ "First design decision, and it isn't really theirs: DiT does not diffuse pixels. A 256 by 256 image has almost two hundred thousand values. ★ They take the pretrained VAE from Stable Diffusion, frozen, and encode the image into a 32 by 32 by 4 latent. That's about four thousand numbers, 48 times fewer. All the diffusion happens on this small tensor. ★ DiT is the network in the middle: it takes a noisy latent and predicts the noise. This is exactly the latent diffusion setup from Rombach and colleagues; the authors are explicit that they borrow it so they can compare architectures fairly. ★ At the end, the decoder is run once to turn the clean latent back into pixels. So everything outside the middle box is fixed and shared with the baselines. The whole paper is about what goes inside that box.",
+ "Now inside the box. Step one is straight out of ViT. The noisy latent is a 32 by 32 grid with four channels. ★ Cut it into p by p patches, flatten each one, and project it linearly to the transformer width d. With patch size 8 you get 16 tokens. ★ Add a positional embedding. They use the fixed sine-cosine embedding from ViT, nothing learned. ★ Here is the detail that matters for the rest of the talk. The patch size changes the number of tokens, and therefore the compute, by a factor of four each time you halve it, but it changes the parameter count by essentially nothing, because the patch embedding is a tiny fraction of the model. ★ So patch size is a compute dial that is independent of model size. They will use it to separate the effect of compute from the effect of parameters.",
+ "Step two is the part they actually had to design. A diffusion network needs to know the timestep t and, here, the class label c. In a U-Net you add them to the feature maps. In a transformer there are several options, and they tried four. ★ First, in-context conditioning: just append t and c as two more tokens, exactly like the class token in ViT, and ignore them at the output. Free in compute. ★ Second, cross-attention, the way Stable Diffusion handles text: an extra cross-attention layer in every block. This is the most expensive, about fifteen percent more Gflops. ★ Third, adaptive LayerNorm, borrowed from StyleGAN and from some GAN work: instead of learning the scale and shift of LayerNorm, regress them from the conditioning. Cheapest of all. ★ Fourth, their variant, adaLN-Zero: also regress a scale alpha on each residual branch, and initialise the regressor so that alpha starts at exactly zero. We'll see why on the next slide. ★ The result is clear: adaLN-Zero has the lowest FID throughout training, and the gap to the others is large. This is the single architectural contribution of the paper, and every DiT descendant kept it.",
+ "Let me draw one DiT block, because this is the figure everyone copies. ★ Underneath, it is a completely standard pre-norm transformer block: LayerNorm, multi-head self-attention, a residual add, LayerNorm, a pointwise MLP, another residual add. Nothing unusual yet. ★ Now the conditioning. Embed the timestep and the class label, add them together, and push the sum through a small network, a SiLU and a linear layer. That network outputs six vectors per block: a scale and shift for each LayerNorm, that's the adaLN part, and one extra scale alpha for each residual branch. Those vectors modulate the highlighted boxes. ★ And here is the zero. The linear layer that produces alpha is initialised to all zeros. So at the very first training step, every residual branch is multiplied by zero, each block outputs exactly its input, and the entire network is the identity function. This is an old trick from training large ResNets, zero-initialising the last normalisation in each block, and it turns out to matter a lot here: adaLN-Zero versus plain adaLN is a big FID gap, and the only difference is this alpha and its initialisation.",
+ "Putting it together. The input is a noised latent. ★ Patchify, add positions, run N DiT blocks, then a final LayerNorm and a linear layer that maps each token back to a p by p patch with eight channels, because the model predicts both the noise and the diagonal covariance, as in improved DDPM. Unpatchify, and you have two 32 by 32 by 4 tensors. ★ They train four sizes that mirror the ViT configurations: Small, Base, Large and XL, from 33 million to 675 million parameters. Combined with three patch sizes, 8, 4 and 2, that is twelve models. The notation is size slash patch, so DiT-XL/2 is the biggest model with the smallest patch, about 119 Gflops per forward pass. ★ Training is deliberately boring: AdamW, constant learning rate of 1e-4, batch 256, no weight decay, no warmup, horizontal flips only. The point is that nothing here is tuned; the architecture is a stock ViT plus adaLN-Zero.",
+ "Now the scaling result, which is the real reason the paper matters. Remember the compute dial. ★ Take the biggest model, XL, and keep all 675 million parameters fixed. Only change the patch size from 8 to 4 to 2, so compute goes up about four times per step. FID improves sharply at each step, at every point during training. The parameters didn't change at all; only the compute did. ★ Then they put all twelve models on one plot of Gflops against FID, and the correlation is minus 0.93. It does not matter whether the Gflops come from more layers, a wider model, or more tokens: they all land on the same curve. ★ So the quantity that predicts quality is compute per forward pass, not parameter count. That is a different way of thinking about model size than the parameter-centric view we usually take from language models, and it is the paper's central empirical claim.",
+ "A natural objection: diffusion models have a second compute knob, the number of sampling steps. Maybe a small model with many steps is as good as a big model with few. They test exactly this. ★ Take DiT-L/2 and sample with the full thousand steps. That costs about 81 teraflops per image and gives an FID of 25.9, measured at 400 thousand training steps without guidance. ★ Now take the bigger DiT-XL/2 and sample with only 128 steps. That is 15 teraflops, more than five times less, and the FID is better, 23.7. ★ So model compute and sampling compute are not interchangeable. You cannot buy back a small network with patience. If you have a compute budget, put it into the model.",
+ "Finally the headline numbers. Class-conditional ImageNet at 256 by 256, the standard benchmark, FID on fifty thousand samples. The previous best diffusion results were ADM with guidance and upsampling at 3.94, using about 740 Gflops, and latent diffusion with guidance at 3.60. Where do you think the DiT lands? Pause for a guess. ★ 2.27. That was the best FID ever reported on this benchmark at the time, by a clear margin. ★ At 512 by 512 the story repeats: 3.04 against ADM's 3.85. ★ And look at the compute column: DiT-XL/2 uses about six times fewer Gflops than ADM and roughly the same as the LDM U-Net it replaces. So the transformer is not winning by brute force; at matched compute it is simply the better backbone.",
+ "So, did it take over? ★ Yes, and quickly. Sora, OpenAI's video model, is described in its own report as a diffusion transformer operating on spacetime patches, and it cites this paper directly. Bill Peebles went on to lead Sora. ★ Stable Diffusion 3 replaced its U-Net with MMDiT, a variant with two streams, one for text tokens and one for image tokens, that share attention. Flux and most text-to-image models since use the same family. ★ On the research side, the same group followed up with SiT, which keeps the DiT architecture and only changes the training objective to flow matching, and others like REPA showed you can train DiTs far faster by aligning their features with a self-supervised encoder. ★ The weaknesses are worth stating. Everything here is class-conditional ImageNet, which is a narrow task. The VAE is frozen and borrowed. Attention cost grows quadratically with tokens, so patch size 2 at high resolution gets expensive fast. And FID is the only metric. ★ Even so, the conclusion held: within two years the diffusion transformer was the default backbone.",
+ "I'd like to open it up with five questions. ★ First, the big one. Was the U-Net's inductive bias ever necessary, or did ImageNet-scale data and compute just grow past the point where it mattered? The same thing happened with ViT in classification. ★ Second, adaLN is great for a single class label, but text-to-image needs to condition on 77 or more tokens. SD3's answer was MMDiT, a two-stream design. Is that the right generalisation, or a workaround? ★ Third, cost. Patch 2 is sixteen times the compute of patch 8, and attention is quadratic in the number of tokens. At 1024 by 1024, or for a minute of video, is this sustainable, or do we need sparse or linear attention here as well? ★ Fourth, if quality tracks Gflops regardless of where they come from, where should the next ten times go? Deeper, wider, more tokens, or more sampling steps, which we saw was the worst option? ★ And fifth, FID. The whole paper is ranked by one metric that measures distribution match on ImageNet. Would the U-Net versus DiT comparison change under human preference or text alignment?",
+ "To wrap up. Four things to remember. The architecture: a Vision Transformer over latent patches, with the timestep and class injected through adaLN-Zero, whose zero initialisation makes every block start as the identity. The scaling law: sample quality tracks compute per forward pass, with a correlation of minus 0.93, and patch size lets you change compute without touching parameters. The result: FID 2.27 on ImageNet, the best at the time, with no U-Net and six times fewer Gflops than ADM. And the legacy: Sora, Stable Diffusion 3 and Flux are all descendants of this block. ★ The code and weights are public, and the repository is small enough to read in an afternoon, which I recommend. ★ Thank you, and I'm happy to take questions."
+];
+const deck = document.getElementById('deck'), stage = document.getElementById('stage');
+const slides = [...deck.querySelectorAll('.slide')], N = slides.length;
+let cur = -1;
+const store = { get(k){try{return localStorage.getItem(k)}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}} };
+
+function fit(){
+  const r = stage.getBoundingClientRect();
+  const s = Math.min(r.width / 960, r.height / 540) * (document.body.classList.contains('fs') ? 1 : 0.96);
+  deck.style.transform = `scale(${s})`;
+}
+let step = 0;
+const maxStep = s => +s.dataset.steps || 0;
+// reveal every element whose step <= k; `animate` false shows them instantly
+function show(slide, k, animate){
+  slide.querySelectorAll('[data-s]').forEach(el => {
+    const s = +el.dataset.s, was = el.classList.contains('in');
+    if (s <= k) {
+      if (!was) {
+        el.classList.add('in'); el.classList.toggle('instant', !animate);
+        if (el.dataset.count !== undefined) countUp(el, animate);
+      }
+    } else el.classList.remove('in', 'instant');
+  });
+  // elements with data-o fade out once step k reaches their out-step
+  slide.querySelectorAll('[data-o]').forEach(el => {
+    if (k >= +el.dataset.o) {
+      if (!el.classList.contains('gone')) { el.classList.add('gone'); el.classList.toggle('gone-now', !animate); }
+    } else el.classList.remove('gone', 'gone-now');
+  });
+}
+// Keynote-style magic move: elements sharing a data-mm key glide from their old slide position to the new one
+function magicMove(from, to){
+  if (!from || from === to || noMotion()) return () => {};
+  const scale = deck.getBoundingClientRect().width / 960, old = {};
+  const visible = e => getComputedStyle(e).visibility !== 'hidden' && !e.classList.contains('gone');
+  from.querySelectorAll('[data-mm]').forEach(e => { if (visible(e)) old[e.dataset.mm] = e.getBoundingClientRect(); });
+  return () => to.querySelectorAll('[data-mm]').forEach(e => {
+    const a = old[e.dataset.mm];
+    if (!a || !visible(e)) return;
+    const b = e.getBoundingClientRect();
+    if (!b.width || !b.height) return;
+    const dx = (a.left - b.left) / scale, dy = (a.top - b.top) / scale, sx = a.width / b.width, sy = a.height / b.height;
+    if (Math.abs(dx) < .5 && Math.abs(dy) < .5 && Math.abs(sx - 1) < .01 && Math.abs(sy - 1) < .01) return;
+    e.animate([{transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`, transformOrigin: '0 0'},
+               {transform: 'none', transformOrigin: '0 0'}], {duration: 700, easing: 'cubic-bezier(.3, .7, .2, 1)'});
+  });
+}
+function go(i, atEnd){
+  i = Math.max(0, Math.min(N - 1, i));
+  const changed = i !== cur || !slides[i].classList.contains('on');
+  const glide = changed && cur >= 0 ? magicMove(slides[cur], slides[i]) : () => {};
+  cur = i;
+  if (changed) {
+    slides.forEach((s, k) => s.classList.toggle('on', k === cur));
+    slides[cur].querySelectorAll('[data-s]').forEach(el => el.classList.remove('in', 'instant'));
+    slides[cur].querySelectorAll('[data-o]').forEach(el => el.classList.remove('gone', 'gone-now'));
+    step = atEnd ? maxStep(slides[cur]) : 0;
+    show(slides[cur], step, false);  // page turns are instant; only key-press steps animate
+    glide();
+  }
+  if (atEnd && !changed) { step = maxStep(slides[cur]); show(slides[cur], step, false); }
+  if (atEnd) slides[cur].querySelectorAll('[data-s]').forEach(el => el.classList.add('instant'));
+  update();
+}
+function next(){
+  if (step < maxStep(slides[cur])) { step++; show(slides[cur], step, true); update(); }
+  else if (cur < N - 1) go(cur + 1);
+}
+function prev(){
+  if (step > 0) { step--; show(slides[cur], step, false); update(); }
+  else if (cur > 0) go(cur - 1, true);
+}
+function update(){
+  const m = maxStep(slides[cur]);
+  document.getElementById('count').textContent = `${cur + 1} / ${N}`;
+  document.getElementById('steps').innerHTML = m ? Array.from({length: m}, (_, k) => `<i class="${k < step ? 'on' : ''}"></i>`).join('') : '';
+  document.querySelector('#prog i').style.width = `${(cur + (m ? step / m : 1)) / N * 100}%`;
+  const nt = document.getElementById('notesText'), newSlide = cur !== update.lastSlide;
+  if (newSlide) {
+    // ★ marks a click: segment k is what to say after the k-th click on this slide
+    const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    nt.innerHTML = (NOTES[cur] || '').split('★').map((t, k) =>
+      (k ? `<b class="star" data-k="${k}">★${k}</b>` : '') + `<span class="seg" data-k="${k}">${esc(t.trim())}</span> `).join('');
+    document.getElementById('notes').scrollTop = 0;   // new slide: notes start at the top
+    update.lastSlide = cur;
+  }
+  nt.querySelectorAll('[data-k]').forEach(e => {
+    const k = +e.dataset.k;
+    e.classList.toggle('past', k < step); e.classList.toggle('cur', k === step); e.classList.toggle('future', k > step);
+  });
+  const curSeg = nt.querySelector('.seg.cur');
+  if (!newSlide && curSeg && curSeg.scrollIntoView) curSeg.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+  history.replaceState(null, '', '#' + (cur + 1));
+  renderPresenter();
+  send();
+  document.querySelectorAll('.thumb').forEach((t, k) => t.classList.toggle('cur', k === cur));
+}
+// count-up numbers (e.g. 65,536 / 4.0×), started after the element's own delay
+const noMotion = () => document.body.classList.contains('noanim') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+function countUp(el, animate){
+  const span = [...el.querySelectorAll('span, p')].find(s => /\d/.test(s.textContent) && !s.children.length);
+  if (!span) return;
+  if (!span.dataset.orig) span.dataset.orig = span.textContent;
+  const orig = span.dataset.orig, m = orig.match(/\d[\d,]*(\.\d+)?/);
+  const token = (span._tok = (span._tok || 0) + 1);
+  if (!m || !animate || noMotion()) { span.textContent = orig; return; }
+  const target = parseFloat(m[0].replace(/,/g, '')), dec = m[1] ? m[1].length - 1 : 0;
+  const comma = m[0].includes(','), pre = orig.slice(0, m.index), post = orig.slice(m.index + m[0].length);
+  const fmt = v => { let s = v.toFixed(dec); if (comma) s = Number(s).toLocaleString('en-US', {minimumFractionDigits: dec}); return pre + s + post; };
+  span.textContent = fmt(0);
+  setTimeout(() => {
+    const t0 = performance.now(), dur = 900;
+    const tick = now => {
+      if (span._tok !== token) return;
+      const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+      span.textContent = p < 1 ? fmt(target * e) : orig;
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    setTimeout(() => { if (span._tok === token) span.textContent = orig; }, dur + 200);
+  }, parseFloat(el.dataset.count) * 1000 + 150);
+}
+// ---- presenter view: a second window with notes, synced over postMessage ----
+const PRESENTER = new URLSearchParams(location.search).has('presenter');
+let peer = null, applying = false;
+function target(){ const t = PRESENTER ? window.opener : peer; return t && !t.closed ? t : null; }
+function send(){
+  if (applying) return;
+  const t = target(); if (t) try { t.postMessage({nsa: 'state', i: cur, k: step}, '*'); } catch (e) {}
+}
+function setState(i, k){
+  if (i !== cur) { go(i); if (k > 0) { step = k; show(slides[cur], k, false); update(); } }
+  else if (k !== step) { const anim = k === step + 1; step = k; show(slides[cur], k, anim); update(); }
+}
+window.addEventListener('message', e => {
+  const d = e.data; if (!d || !d.nsa) return;
+  if (!PRESENTER) peer = e.source;
+  if (d.nsa === 'hello') send();
+  if (d.nsa === 'state') { applying = true; setState(d.i, d.k); applying = false; }
+});
+function openPresenter(){
+  // P toggles: inside the presenter window it closes it; in the audience window it opens or closes it
+  if (PRESENTER) { window.close(); return; }
+  if (peer && !peer.closed) { peer.close(); peer = null; toast('Presenter view closed'); return; }
+  const url = location.href.split(/[?#]/)[0] + '?presenter#' + (cur + 1);
+  peer = window.open(url, 'slides-presenter', 'width=1280,height=800');
+  if (!peer) {
+    toast('Pop-up blocked. Allow pop-ups for this page (address bar icon, or Safari > Settings > Websites > Pop-up Windows), then press P again', 7000);
+    return;
+  }
+  try { peer.focus(); } catch (e) {}
+  toast(document.fullscreenElement
+    ? 'Presenter view opened in a new window. Exit fullscreen (F) if you cannot see it'
+    : 'Presenter view opened in a new window. Press P again to close it');
+}
+function toast(msg, ms = 3500){
+  let t = document.getElementById('toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), ms);
+}
+function renderPresenter(){
+  if (!PRESENTER) return;
+  const m = maxStep(slides[cur]);
+  document.getElementById('pcount').textContent = `Slide ${cur + 1} / ${N}`;
+  document.getElementById('psteps').textContent = m ? `step ${step} / ${m}` : '';
+  // big "clicks left on this slide" indicator above the notes
+  const left0 = m - step, bar = document.getElementById('pstepbar');
+  document.getElementById('pstepdots').innerHTML = Array.from({length: m}, (_, k) => `<i class="${k < step ? 'done' : ''}"></i>`).join('');
+  document.getElementById('psteptext').innerHTML = left0 > 0
+    ? `${left0} more click${left0 > 1 ? 's' : ''} on this slide<small>step ${step} of ${m}</small>`
+    : (cur < N - 1 ? `Next click → slide ${cur + 2}<small>${m ? 'all steps shown' : 'no animations on this slide'}</small>`
+                   : `Last slide<small>${m ? 'all steps shown' : ''}</small>`);
+  bar.classList.toggle('last', left0 <= 0);
+  const box = document.getElementById('pnextBox'), lab = document.getElementById('pnextLab');
+  box.innerHTML = '';
+  const left = m - step;
+  lab.textContent = left > 0 ? `Next · ${left} more step${left > 1 ? 's' : ''} on this slide, then:` : 'Next slide';
+  if (cur < N - 1) {
+    const f = document.createElement('div'); f.className = 'frame';
+    const c = slides[cur + 1].cloneNode(true); c.classList.remove('on'); f.appendChild(c); box.appendChild(f);
+    requestAnimationFrame(() => { f.style.transform = `scale(${Math.min(box.clientWidth / 960, box.clientHeight / 540)})`; });
+  } else box.innerHTML = '<div class="end">End of presentation</div>';
+}
+function toggleAnim(on){
+  const v = !document.body.classList.toggle('noanim', on === undefined ? undefined : !on);
+  document.getElementById('bAnim').classList.toggle('act', v);
+  store.set('nsa-anim', v ? '1' : '0');
+}
+function toggle(cls, on){
+  const v = document.body.classList.toggle(cls, on);
+  document.getElementById({notes:'bNotes', grid:'bGrid'}[cls] || 'x')?.classList.toggle('act', v);
+  if (cls === 'notes') store.set('nsa-notes', v ? '1' : '0');
+  if (cls === 'grid' && v) sizeThumbs();
+  fit();
+}
+function fullscreen(){
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.();
+}
+document.addEventListener('fullscreenchange', () => { document.body.classList.toggle('fs', !!document.fullscreenElement); fit(); });
+
+// overview grid
+const grid = document.getElementById('grid');
+slides.forEach((s, k) => {
+  const t = document.createElement('div'); t.className = 'thumb';
+  const c = s.cloneNode(true); c.classList.remove('on'); t.appendChild(c);
+  c.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
+  const b = document.createElement('b'); b.textContent = k + 1; t.appendChild(b);
+  t.onclick = () => { go(k); toggle('grid', false); };
+  grid.appendChild(t);
+});
+function sizeThumbs(){
+  requestAnimationFrame(() => document.querySelectorAll('.thumb').forEach(t => {
+    t.firstChild.style.transform = `scale(${t.clientWidth / 960})`;
+  }));
+}
+
+document.getElementById('prev').onclick = prev;
+document.getElementById('next').onclick = next;
+document.getElementById('bNotes').onclick = () => toggle('notes');
+document.getElementById('bGrid').onclick = () => toggle('grid');
+document.getElementById('bFs').onclick = fullscreen;
+document.getElementById('bPres').onclick = openPresenter;
+document.getElementById('bAnim').onclick = () => toggleAnim();
+stage.addEventListener('click', e => { if (e.target.closest('button')) return; const r = stage.getBoundingClientRect(); (e.clientX - r.left < r.width / 3 ? prev : next)(); });
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key;
+  if (e.shiftKey && k === 'ArrowRight') { e.preventDefault(); go(cur + 1, true); return; }
+  if (e.shiftKey && k === 'ArrowLeft') { e.preventDefault(); go(cur - 1, true); return; }
+  if (['ArrowRight','ArrowDown','PageDown',' ','Enter'].includes(k)) { e.preventDefault(); next(); }
+  else if (['ArrowLeft','ArrowUp','PageUp','Backspace'].includes(k)) { e.preventDefault(); prev(); }
+  else if (k === 'Home') go(0);
+  else if (k === 'End') go(N - 1, true);
+  else if (k === 'n' || k === 'N') toggle('notes');
+  else if (k === 'g' || k === 'G' || (k === 'Escape' && document.body.classList.contains('grid'))) toggle('grid');
+  else if (k === 'f' || k === 'F') fullscreen();
+  else if (k === 'a' || k === 'A') toggleAnim();
+  else if (k === 'p' || k === 'P') openPresenter();
+});
+let tx = null;
+stage.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, {passive:true});
+stage.addEventListener('touchend', e => { if (tx === null) return; const d = e.changedTouches[0].clientX - tx; if (Math.abs(d) > 40) (d < 0 ? next : prev)(); tx = null; });
+window.addEventListener('resize', () => { fit(); if (document.body.classList.contains('grid')) sizeThumbs(); });
+window.addEventListener('hashchange', () => { const h = parseInt(location.hash.slice(1)); if (h) go(h - 1); });
+
+if (!PRESENTER && store.get('nsa-notes') === '1') toggle('notes', true);  // N state survives a reload
+if (store.get('nsa-anim') === '0') toggleAnim(false);
+if (PRESENTER) {
+  document.body.classList.add('presenter');
+  document.title = 'Presenter · ' + document.title;
+  const t0 = {v: Date.now()}, pad = n => String(n).padStart(2, '0');
+  const tick = () => {
+    const s = Math.floor((Date.now() - t0.v) / 1000), d = new Date();
+    document.getElementById('ptimer').textContent = `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
+    document.getElementById('pclock').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  setInterval(tick, 500); tick();
+  document.getElementById('ptimer').onclick = () => { t0.v = Date.now(); tick(); };
+  let nfs = parseFloat(store.get('nsa-nfs')) || 22;
+  const setN = v => { nfs = Math.max(14, Math.min(40, v)); document.body.style.setProperty('--nfs', nfs + 'px'); store.set('nsa-nfs', nfs); };
+  setN(nfs);
+  document.getElementById('pSmaller').onclick = () => setN(nfs - 2);
+  document.getElementById('pBigger').onclick = () => setN(nfs + 2);
+  window.addEventListener('resize', renderPresenter);
+}
+go((parseInt(location.hash.slice(1)) || 1) - 1, new URLSearchParams(location.search).has('all'));  // ?all reveals every step, for screenshots
+if (PRESENTER && window.opener) try { window.opener.postMessage({nsa: 'hello'}, '*'); } catch (e) {}
+fit();
+
+</script>
+</body>
+</html>
