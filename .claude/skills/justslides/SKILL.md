@@ -5,6 +5,11 @@ description: Build a self-contained HTML slide deck (960×540, click-by-click re
 
 # JustSlides: HTML slide decks in the house style
 
+**Made for presenting, not decorating.** Every choice serves the person giving the talk and
+the audience following the argument: a click reveals the next step of the reasoning, the
+notes say what to say after that click, and the style stays plain so nothing competes with
+the content. When in doubt, cut decoration and add a click or a sentence of notes.
+
 You produce **one `.html` file** that opens in any browser with no build step and no network
 dependency except Google Fonts (which degrades gracefully to Times New Roman). The file contains:
 
