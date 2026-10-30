@@ -147,6 +147,10 @@ body.presenter #notes{display:block;left:62%;right:0;top:calc(56px + 36vh);botto
 .box{background:#eef0f3;padding:14px 18px}
 .call{border-left:4px solid #3b5b7a;background:#e1e8f0;padding:12px 18px;font-size:21px;line-height:1.3;color:#3b5b7a}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:0 40px}
+.hero{background:#3b5b7a;color:#fff;padding:16px 20px 18px;display:grid;gap:4px}
+.hero .lab{color:#c9d6e4}
+.hero b{font-size:40px;line-height:1.1;letter-spacing:.01em}
+.hero small{font-size:17px;color:#dbe4ee}
 .vr{border-left:1.5px solid #c5cbd3;padding-left:32px}
 .stack>*+*{margin-top:14px}
 .pts{display:grid;gap:14px}
@@ -186,6 +190,39 @@ table.cmp{width:100%;border-collapse:collapse;font-size:21px;margin-top:6px}
 .cmp td.hl{background:#e1e8f0;position:relative}
 .cmp small{display:block;font-size:15px;color:#5f6b7a}
 .cmp .reveal{position:absolute;right:12px;top:10px}
+/* other search methods */
+table.oth{width:100%;border-collapse:collapse;font-size:16px;margin-top:6px;table-layout:fixed}
+.oth td{padding:7px 8px;border-bottom:1px solid #c5cbd3;vertical-align:top;line-height:1.25}
+.oth td:nth-child(1){width:150px}.oth td:nth-child(3){width:94px}.oth td:nth-child(4){width:118px}
+.oth tr:first-child td{border-bottom:1.5px solid #1f2933;color:#5f6b7a;font-size:14px}
+.oth tr.hl td{background:#e1e8f0}
+.oth td b{color:#3b5b7a;font-weight:700}
+.oth small{display:block;font-size:13px;color:#5f6b7a;margin-top:2px}
+.oth sub{font-size:65%}
+/* mini animations */
+.viz{position:relative;background:#eef0f3;padding:9px 14px 8px}
+.vcap{font-size:13px;color:#5f6b7a;margin-top:7px!important;white-space:nowrap}
+.ibar{position:relative;height:14px;background:#fff;border:1px solid #c5cbd3;margin-top:28px}
+.imid{position:absolute;left:50%;top:-5px;bottom:-5px;border-left:1.5px dashed #9aa3ad}
+.imid span{position:absolute;left:50%;transform:translateX(-50%);top:-17px;font-size:11px;color:#9aa3ad;white-space:nowrap}
+.iptr{position:absolute;left:88%;top:-7px;width:3px;height:26px;background:#3b5b7a;margin-left:-1.5px}
+.iptr b{position:absolute;left:50%;transform:translateX(-50%);top:-19px;font-size:12px;color:#3b5b7a;white-space:nowrap;font-weight:700}
+.iends{display:flex;justify-content:space-between;font-size:12px;color:#5f6b7a;margin-top:3px}
+.fx-interp{--fx:aInterp}
+.slide.on .fx-interp.in{animation-duration:1.6s;animation-timing-function:cubic-bezier(.45,0,.2,1)}
+@keyframes aInterp{0%{left:0%}25%{left:0%}100%{left:88%}}
+.hrow{position:relative;height:32px;margin-top:8px}
+.hk,.hf{position:absolute;top:0;height:32px;display:grid;place-items:center;font-size:16px}
+.hk{left:0;width:46px;border:1px solid #3b5b7a;color:#3b5b7a}
+.hf{left:92px;width:62px;background:#fff;border:1px solid #c5cbd3;font-style:italic}
+.harr{position:absolute;top:6px;font-size:15px;color:#5f6b7a;white-space:nowrap}
+.htok{position:absolute;left:11px;top:4px;width:24px;height:24px;border-radius:50%;background:#3b5b7a;color:#fff;font-size:11px;display:grid;place-items:center;opacity:0;z-index:1}
+.fx-hash{--fx:aHash}
+.slide.on .fx-hash.in{animation-duration:2.1s;animation-timing-function:ease-in-out}
+@keyframes aHash{0%{transform:translate(0,0);opacity:1}30%{transform:translate(112px,0);opacity:1}50%{transform:translate(112px,0);opacity:1}92%{transform:translate(93px,44px);opacity:1}100%{transform:translate(93px,44px);opacity:0}}
+.hslots{display:flex;gap:4px;margin-top:12px}
+.hslots i{position:relative;width:30px;height:28px;background:#fff;border:1px solid #c5cbd3;font-style:normal;font-size:12px;color:#9aa3ad;display:grid;place-items:center}
+.hslots i.hit div{position:absolute;inset:-1px;background:#4f7d5a;color:#fff;font-size:13px;display:grid;place-items:center}
 /* halving chain */
 .chain{display:grid;grid-template-columns:repeat(11,74px);gap:10px 4px;margin-top:4px}
 .lk{display:grid;justify-items:center;gap:3px}
@@ -228,12 +265,10 @@ table.cmp{width:100%;border-collapse:collapse;font-size:21px;margin-top:6px}
 <body>
 <div id="stage"><div id="deck">
 <section class="slide" style="background:#fff" data-i="0" data-steps="0">
-<div class="el a fx-down" data-s="0" style="left:57.6px;top:96px;width:830px;font-size:53.33px;line-height:1.15;color:#1f2933">How Many Questions Does It Take to Find a Number?</div>
-<div class="el a fx-up" data-s="0" style="--d:.4s;left:57.6px;top:268px;width:830px;font-size:29.33px;color:#3b5b7a">An introduction to binary search</div>
-<div class="el a fx-up" data-s="0" style="--d:.7s;left:57.6px;top:372px;width:830px;font-size:21.33px;color:#5f6b7a">CS 495 Micro-Teaching</div>
-<div class="el a fx-up" data-s="0" style="--d:.7s;left:57.6px;top:404px;width:830px;font-size:21.33px;color:#1f2933">Presented by Jane Doe</div>
+<div class="el a fx-down" data-s="0" style="left:57.6px;top:186px;width:830px;font-size:53.33px;line-height:1.15;color:#1f2933">CS 495 Micro-Teaching</div>
+<div class="el a fx-up" data-s="0" style="--d:.4s;left:57.6px;top:272px;width:830px;font-size:29.33px;color:#3b5b7a">Presented by Jane Doe</div>
 </section>
-<section class="slide" style="background:#fff" data-i="1" data-steps="1"><div class="ttl a fx-down" data-s="0">Let's Play a Guessing Game</div>
+<section class="slide" style="background:#fff" data-i="1" data-steps="0"><div class="ttl a fx-down" data-s="0">Let's Play a Guessing Game</div>
 <div class="bd">
   <div class="a fx-up" data-s="0">
     <p class="h">The rules</p>
@@ -244,7 +279,6 @@ table.cmp{width:100%;border-collapse:collapse;font-size:21px;margin-top:6px}
     </ol>
     <div style="margin:12px 0 0 40px"><span class="tag">Higher</span><span class="tag">Lower</span><span class="tag">Correct</span></div>
   </div>
-  <div class="a fx-up call" data-s="1" style="margin-top:44px;font-size:24px">Before we start: if <i>you</i> were guessing, what would your first guess be, and why?</div>
 </div>
 <div class="pnum">2</div></section>
 <section class="slide" style="background:#fff" data-i="2" data-steps="0"><div class="ttl a fx-down" data-s="0">Think of a Number from 1 to 100</div>
@@ -261,7 +295,7 @@ table.cmp{width:100%;border-collapse:collapse;font-size:21px;margin-top:6px}
       <li><i>3</i><span><b>Throw away the half</b> that cannot contain the answer.</span></li>
     </ol>
     <p class="txt navy a fx-up" data-s="1" style="margin-left:40px">Repeat until found.</p>
-    <div class="call a fx-up" data-s="2" style="margin-top:26px">This strategy is called <b>binary search</b>.</div>
+    <div class="hero a fx-pop" data-s="2" style="margin-top:22px"><span class="lab">Today's topic</span><b>Binary Search</b></div>
   </div>
   <div class="vr a fx-fade" data-s="3">
     <p class="h">Numbers still possible</p>
@@ -301,11 +335,7 @@ table.cmp{width:100%;border-collapse:collapse;font-size:21px;margin-top:6px}
 </div>
 <div class="pnum">6</div>
 </section>
-<section class="slide" style="background:#fff" data-i="6" data-steps="0"><div class="ttl a fx-down" data-s="0">Let's Test It: 1 to 1,000,000</div>
-<button class="rst" type="button" data-reset="large">Restart</button>
-<div class="bd"><div class="game" id="game-large"></div></div>
-<div class="pnum">7</div></section>
-<section class="slide" style="background:#fff" data-i="7" data-steps="2"><div class="ttl a fx-down" data-s="0">Checking One by One vs. Cutting in Half</div>
+<section class="slide" style="background:#fff" data-i="6" data-steps="2"><div class="ttl a fx-down" data-s="0">Checking One by One vs. Cutting in Half</div>
 <div class="bd">
   <p class="sub a fx-fade" data-s="0">Worst-case number of guesses, and the time it takes at one guess per second</p>
   <table class="cmp num a fx-up" data-s="0">
@@ -316,58 +346,77 @@ table.cmp{width:100%;border-collapse:collapse;font-size:21px;margin-top:6px}
   </table>
   <div class="call a fx-up" data-s="2" style="margin-top:24px">The more numbers there are, the bigger the gap.</div>
 </div>
+<div class="pnum">7</div>
+</section>
+<section class="slide" style="background:#fff" data-i="7" data-steps="3"><div class="ttl a fx-down" data-s="0">Why So Few Guesses?</div>
+<div class="bd">
+  <p class="sub a fx-fade" data-s="0">Every guess moves one level down a tree. The number of guesses is the depth of the tree.</p>
+  <div class="two" style="grid-template-columns:560px 1fr;gap:0 24px;margin-top:10px;align-items:start">
+    <div><svg viewBox="0 0 560 322" width="560" height="322" style="display:block" font-family="'Times New Roman',Tinos,serif"><g class="a fx-fade" data-s="1"><path d="M340.0 34 L230.0 70" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M340.0 34 L450.0 70" stroke="#3b5b7a" stroke-width="2" fill="none"/><path d="M230.0 100 L175.0 136" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M230.0 100 L285.0 136" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M450.0 100 L395.0 136" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M450.0 100 L505.0 136" stroke="#3b5b7a" stroke-width="2" fill="none"/><path d="M175.0 166 L147.5 202" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M175.0 166 L202.5 202" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M285.0 166 L257.5 202" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M285.0 166 L312.5 202" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M395.0 166 L367.5 202" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M395.0 166 L422.5 202" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M505.0 166 L477.5 202" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M505.0 166 L532.5 202" stroke="#3b5b7a" stroke-width="2" fill="none"/></g><g class="a fx-fade" data-s="0"><rect x="288.0" y="4" width="104" height="30" fill="#3b5b7a"/><text x="340.0" y="24.0" text-anchor="middle" font-size="15" fill="#fff">1–100</text></g><g class="a fx-fade" data-s="1"><rect x="180.0" y="70" width="100" height="30" fill="#eef0f3"/><text x="230.0" y="90.0" text-anchor="middle" font-size="15" fill="#1f2933">1–50</text></g><g class="a fx-fade" data-s="1"><rect x="400.0" y="70" width="100" height="30" fill="#3b5b7a"/><text x="450.0" y="90.0" text-anchor="middle" font-size="15" fill="#fff">51–100</text></g><g class="a fx-fade" data-s="1"><rect x="132.0" y="136" width="86" height="30" fill="#eef0f3"/><text x="175.0" y="156.0" text-anchor="middle" font-size="15" fill="#1f2933">1–25</text></g><g class="a fx-fade" data-s="1"><rect x="242.0" y="136" width="86" height="30" fill="#eef0f3"/><text x="285.0" y="156.0" text-anchor="middle" font-size="15" fill="#1f2933">26–50</text></g><g class="a fx-fade" data-s="1"><rect x="352.0" y="136" width="86" height="30" fill="#eef0f3"/><text x="395.0" y="156.0" text-anchor="middle" font-size="15" fill="#1f2933">51–75</text></g><g class="a fx-fade" data-s="1"><rect x="462.0" y="136" width="86" height="30" fill="#3b5b7a"/><text x="505.0" y="156.0" text-anchor="middle" font-size="15" fill="#fff">76–100</text></g><g class="a fx-fade" data-s="1"><rect x="122.5" y="202" width="50" height="30" fill="#eef0f3"/><text x="147.5" y="222.0" text-anchor="middle" font-size="15" fill="#1f2933">1–12</text></g><g class="a fx-fade" data-s="1"><rect x="177.5" y="202" width="50" height="30" fill="#eef0f3"/><text x="202.5" y="222.0" text-anchor="middle" font-size="15" fill="#1f2933">13–25</text></g><g class="a fx-fade" data-s="1"><rect x="232.5" y="202" width="50" height="30" fill="#eef0f3"/><text x="257.5" y="222.0" text-anchor="middle" font-size="15" fill="#1f2933">26–37</text></g><g class="a fx-fade" data-s="1"><rect x="287.5" y="202" width="50" height="30" fill="#eef0f3"/><text x="312.5" y="222.0" text-anchor="middle" font-size="15" fill="#1f2933">38–50</text></g><g class="a fx-fade" data-s="1"><rect x="342.5" y="202" width="50" height="30" fill="#eef0f3"/><text x="367.5" y="222.0" text-anchor="middle" font-size="15" fill="#1f2933">51–62</text></g><g class="a fx-fade" data-s="1"><rect x="397.5" y="202" width="50" height="30" fill="#eef0f3"/><text x="422.5" y="222.0" text-anchor="middle" font-size="15" fill="#1f2933">63–75</text></g><g class="a fx-fade" data-s="1"><rect x="452.5" y="202" width="50" height="30" fill="#eef0f3"/><text x="477.5" y="222.0" text-anchor="middle" font-size="15" fill="#1f2933">76–87</text></g><g class="a fx-fade" data-s="1"><rect x="507.5" y="202" width="50" height="30" fill="#3b5b7a"/><text x="532.5" y="222.0" text-anchor="middle" font-size="15" fill="#fff">88–100</text></g><g class="a fx-fade" data-s="0"><text x="0" y="17" font-size="15" fill="#3b5b7a">Guess 1</text><text x="0" y="33" font-size="12" fill="#5f6b7a">100 possible</text></g><g class="a fx-fade" data-s="1"><text x="0" y="83" font-size="15" fill="#3b5b7a">Guess 2</text><text x="0" y="99" font-size="12" fill="#5f6b7a">50</text></g><g class="a fx-fade" data-s="1"><text x="0" y="149" font-size="15" fill="#3b5b7a">Guess 3</text><text x="0" y="165" font-size="12" fill="#5f6b7a">25</text></g><g class="a fx-fade" data-s="1"><text x="0" y="215" font-size="15" fill="#3b5b7a">Guess 4</text><text x="0" y="231" font-size="12" fill="#5f6b7a">12</text></g><g class="a fx-fade" data-s="2"><text x="340.0" y="246" text-anchor="middle" font-size="22" fill="#9aa3ad">⋮</text><text x="340.0" y="313" text-anchor="middle" font-size="12" fill="#5f6b7a">each leaf is a single number, 1 … 100</text><rect x="121.5" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="135.2" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="149.0" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="162.8" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="176.5" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="190.2" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="204.0" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="217.8" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="231.5" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="245.2" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="259.0" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="272.8" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="286.5" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="300.2" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="314.0" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="327.8" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="341.5" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="355.2" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="369.0" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="382.8" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="396.5" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="410.2" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="424.0" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="437.8" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="451.5" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="465.2" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="479.0" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="492.8" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="506.5" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="520.2" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="534.0" y="268" width="10.8" height="30" fill="#eef0f3"/><rect x="547.8" y="268" width="10.8" height="30" fill="#4f7d5a"/></g><g class="a fx-fade" data-s="2"><text x="0" y="281" font-size="15" fill="#3b5b7a">Guess 7</text><text x="0" y="297" font-size="12" fill="#5f6b7a">1 possible ✓</text></g></svg></div>
+    <div class="stack">
+      <div class="box a fx-up" data-s="2">
+        <p class="h">Depth of the tree</p>
+        <p class="txt num" style="font-size:19px">1 to 100: halve 100 → 50 → 25 → 12 → 6 → 3 → 1. That is <b>7 levels</b>, so at most 7 guesses.</p>
+      </div>
+      <div class="box a fx-up" data-s="3">
+        <p class="h">In plain English</p>
+        <p class="txt" style="font-size:19px">How many times can you halve <i>N</i> until 1 is left? That count is <b>log<sub>2</sub>(<i>N</i>)</b>, the depth of the tree.</p>
+        <p class="txt num" style="font-size:19px;margin-top:8px">1 to 1,000,000: <b>20 levels</b>, so at most 20 guesses.<br><span class="muted" style="font-size:16px">2<sup>20</sup> = 1,048,576 ≥ 1,000,000</span></p>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="pnum">8</div>
 </section>
-<section class="slide" style="background:#fff" data-i="8" data-steps="2"><div class="ttl a fx-down" data-s="0">Why Only 20 Guesses?</div>
+<section class="slide" style="background:#fff" data-i="8" data-steps="3"><div class="ttl a fx-down" data-s="0">Can Any Strategy Do Better Than 7?</div>
 <div class="bd">
-  <p class="sub a fx-fade" data-s="0">Each guess cuts the possibilities in half. Small numbers count the guesses.</p>
-  <div class="chain num a fx-up" data-s="0" style="margin-top:12px"><div class="lk s"><b>1,000,000</b><i>start</i></div><div class="lk"><b>500,000</b><i>1</i></div><div class="lk"><b>250,000</b><i>2</i></div><div class="lk"><b>125,000</b><i>3</i></div><div class="lk"><b>62,500</b><i>4</i></div><div class="lk"><b>31,250</b><i>5</i></div><div class="lk"><b>15,625</b><i>6</i></div><div class="lk"><b>7,812</b><i>7</i></div><div class="lk"><b>3,906</b><i>8</i></div><div class="lk"><b>1,953</b><i>9</i></div><div class="lk"><b>976</b><i>10</i></div><div class="lk"><b>488</b><i>11</i></div><div class="lk"><b>244</b><i>12</i></div><div class="lk"><b>122</b><i>13</i></div><div class="lk"><b>61</b><i>14</i></div><div class="lk"><b>30</b><i>15</i></div><div class="lk"><b>15</b><i>16</i></div><div class="lk"><b>7</b><i>17</i></div><div class="lk"><b>3</b><i>18</i></div><div class="lk"><b>1</b><i>19</i></div><div class="lk e"><b>✓</b><i>20</i></div></div>
-  <div class="two" style="margin-top:22px">
-    <div class="box a fx-up" data-s="1">
-      <p class="h">In plain English</p>
-      <p class="txt">How many times can I cut <i>N</i> in half before only 1 is left? This count is <b>log<sub>2</sub>(<i>N</i>)</b>.</p>
-    </div>
-    <div class="box a fx-up" data-s="2">
-      <p class="h">Check with powers of 2</p>
-      <p class="fm num">2<sup>19</sup> = 524,288 <span class="muted" style="font-size:18px">too few</span><br>2<sup>20</sup> = 1,048,576 <span class="ok" style="font-size:18px">≥ 1,000,000</span></p>
+  <p class="sub a fx-fade" data-s="0">Same tree, but each node now shows the number guessed there. Each answer sends us one of two ways.</p>
+  <div class="two" style="grid-template-columns:560px 1fr;gap:0 24px;margin-top:10px;align-items:start">
+    <div><svg viewBox="0 0 560 290" width="560" height="290" style="display:block" font-family="'Times New Roman',Tinos,serif"><g class="a fx-fade" data-s="1"><path d="M340.0 34 L230.0 70" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M340.0 34 L450.0 70" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M230.0 100 L175.0 136" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M230.0 100 L285.0 136" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M450.0 100 L395.0 136" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M450.0 100 L505.0 136" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M175.0 166 L147.5 202" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M175.0 166 L202.5 202" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M285.0 166 L257.5 202" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M285.0 166 L312.5 202" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M395.0 166 L367.5 202" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M395.0 166 L422.5 202" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M505.0 166 L477.5 202" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><path d="M505.0 166 L532.5 202" stroke="#9aa3ad" stroke-width="1.2" fill="none"/><text x="274" y="57" text-anchor="end" font-size="13" fill="#5f6b7a" stroke="#fff" stroke-width="4" paint-order="stroke">lower</text><text x="411" y="57" text-anchor="start" font-size="13" fill="#5f6b7a" stroke="#fff" stroke-width="4" paint-order="stroke">higher</text></g><g class="a fx-fade" data-s="0"><rect x="317.0" y="4" width="46" height="30" fill="#3b5b7a"/><text x="340.0" y="24.0" text-anchor="middle" font-size="15" fill="#fff">50</text></g><g class="a fx-fade" data-s="1"><rect x="207.0" y="70" width="46" height="30" fill="#3b5b7a"/><text x="230.0" y="90.0" text-anchor="middle" font-size="15" fill="#fff">25</text></g><g class="a fx-fade" data-s="1"><rect x="427.0" y="70" width="46" height="30" fill="#3b5b7a"/><text x="450.0" y="90.0" text-anchor="middle" font-size="15" fill="#fff">75</text></g><g class="a fx-fade" data-s="1"><rect x="152.0" y="136" width="46" height="30" fill="#3b5b7a"/><text x="175.0" y="156.0" text-anchor="middle" font-size="15" fill="#fff">12</text></g><g class="a fx-fade" data-s="1"><rect x="262.0" y="136" width="46" height="30" fill="#3b5b7a"/><text x="285.0" y="156.0" text-anchor="middle" font-size="15" fill="#fff">37</text></g><g class="a fx-fade" data-s="1"><rect x="372.0" y="136" width="46" height="30" fill="#3b5b7a"/><text x="395.0" y="156.0" text-anchor="middle" font-size="15" fill="#fff">62</text></g><g class="a fx-fade" data-s="1"><rect x="482.0" y="136" width="46" height="30" fill="#3b5b7a"/><text x="505.0" y="156.0" text-anchor="middle" font-size="15" fill="#fff">87</text></g><g class="a fx-fade" data-s="1"><rect x="124.5" y="202" width="46" height="30" fill="#3b5b7a"/><text x="147.5" y="222.0" text-anchor="middle" font-size="15" fill="#fff">6</text></g><g class="a fx-fade" data-s="1"><rect x="179.5" y="202" width="46" height="30" fill="#3b5b7a"/><text x="202.5" y="222.0" text-anchor="middle" font-size="15" fill="#fff">18</text></g><g class="a fx-fade" data-s="1"><rect x="234.5" y="202" width="46" height="30" fill="#3b5b7a"/><text x="257.5" y="222.0" text-anchor="middle" font-size="15" fill="#fff">31</text></g><g class="a fx-fade" data-s="1"><rect x="289.5" y="202" width="46" height="30" fill="#3b5b7a"/><text x="312.5" y="222.0" text-anchor="middle" font-size="15" fill="#fff">43</text></g><g class="a fx-fade" data-s="1"><rect x="344.5" y="202" width="46" height="30" fill="#3b5b7a"/><text x="367.5" y="222.0" text-anchor="middle" font-size="15" fill="#fff">56</text></g><g class="a fx-fade" data-s="1"><rect x="399.5" y="202" width="46" height="30" fill="#3b5b7a"/><text x="422.5" y="222.0" text-anchor="middle" font-size="15" fill="#fff">68</text></g><g class="a fx-fade" data-s="1"><rect x="454.5" y="202" width="46" height="30" fill="#3b5b7a"/><text x="477.5" y="222.0" text-anchor="middle" font-size="15" fill="#fff">81</text></g><g class="a fx-fade" data-s="1"><rect x="509.5" y="202" width="46" height="30" fill="#3b5b7a"/><text x="532.5" y="222.0" text-anchor="middle" font-size="15" fill="#fff">93</text></g><g class="a fx-fade" data-s="0"><text x="0" y="17" font-size="15" fill="#3b5b7a">Guess 1</text><text x="0" y="33" font-size="12" fill="#5f6b7a">checks 1 number</text></g><g class="a fx-fade" data-s="1"><text x="0" y="83" font-size="15" fill="#3b5b7a">Guess 2</text><text x="0" y="99" font-size="12" fill="#5f6b7a">2 numbers</text></g><g class="a fx-fade" data-s="1"><text x="0" y="149" font-size="15" fill="#3b5b7a">Guess 3</text><text x="0" y="165" font-size="12" fill="#5f6b7a">4 numbers</text></g><g class="a fx-fade" data-s="1"><text x="0" y="215" font-size="15" fill="#3b5b7a">Guess 4</text><text x="0" y="231" font-size="12" fill="#5f6b7a">8 numbers</text></g><g class="a fx-fade" data-s="2"><text x="340.0" y="256" text-anchor="middle" font-size="22" fill="#9aa3ad">⋮</text><text x="340.0" y="286" text-anchor="middle" font-size="13" fill="#5f6b7a">every level doubles: guess <tspan font-style="italic">k</tspan> can check at most 2<tspan baseline-shift="super" font-size="10">k−1</tspan> numbers</text></g></svg></div>
+    <div>
+      <div class="a fx-up num" data-s="1">
+        <div class="lvl"><span>Guess 1 can check</span><span>1</span></div>
+        <div class="lvl"><span>Guess 2 can check</span><span>2</span></div>
+        <div class="lvl"><span>Guess 3 can check</span><span>4</span></div>
+        <div class="lvl"><span>Guess 4 can check</span><span>8</span></div>
+      </div>
+      <div class="a fx-up num" data-s="2">
+        <div class="lvl"><span>6 guesses in total<small style="display:block;font-size:14px;color:#5f6b7a">1 + 2 + 4 + … + 32</small></span><span>63</span></div>
+        <div class="lvl tot"><span>7 guesses in total</span><span>127</span></div>
+      </div>
+      <div class="call a fx-up" data-s="3" style="margin-top:14px;font-size:18px;padding:10px 14px">63 &lt; 100, so 6 guesses are never enough. <b>7 is the best possible.</b><br><span class="muted" style="font-size:15px">Same count for 1 to 1,000,000: 20.</span></div>
     </div>
   </div>
 </div>
 <div class="pnum">9</div>
 </section>
-<section class="slide" style="background:#fff" data-i="9" data-steps="3"><div class="ttl a fx-down" data-s="0">Can Any Strategy Do Better Than 20?</div>
+<section class="slide" style="background:#fff" data-i="9" data-steps="3"><div class="ttl a fx-down" data-s="0">Other Search Methods?</div>
 <div class="bd">
-  <p class="sub a fx-fade" data-s="0">Each answer only sends us one of two ways: higher or lower.</p>
-  <div class="two" style="grid-template-columns:430px 1fr;margin-top:18px;align-items:start">
-    <div><svg viewBox="0 0 420 230" width="420" height="230" style="display:block">
-<g stroke="#9aa3ad" stroke-width="1.5" fill="none">
-<path class="a fx-fade" data-s="1" d="M210 22 L110 82 M210 22 L310 82"/>
-<path class="a fx-fade" data-s="1" d="M110 82 L60 142 M110 82 L160 142 M310 82 L260 142 M310 82 L360 142"/>
-<path class="a fx-fade" data-s="1" d="M60 142 L35 202 M60 142 L85 202 M160 142 L135 202 M160 142 L185 202 M260 142 L235 202 M260 142 L285 202 M360 142 L335 202 M360 142 L385 202"/>
-</g>
-<g font-family="'Times New Roman',Tinos,serif" font-size="14" fill="#5f6b7a" text-anchor="middle"><text x="148" y="46">lower</text><text x="272" y="46">higher</text></g>
-<g fill="#3b5b7a">
-<rect x="198" y="10" width="24" height="24"/>
-<g class="a fx-fade" data-s="1"><rect x="98" y="70" width="24" height="24"/><rect x="298" y="70" width="24" height="24"/>
-<rect x="48" y="130" width="24" height="24"/><rect x="148" y="130" width="24" height="24"/><rect x="248" y="130" width="24" height="24"/><rect x="348" y="130" width="24" height="24"/></g>
-</g>
-<g class="a fx-fade" data-s="1" fill="#eef0f3" stroke="#3b5b7a" stroke-width="1.5">
-<rect x="24" y="191" width="22" height="22"/><rect x="74" y="191" width="22" height="22"/><rect x="124" y="191" width="22" height="22"/><rect x="174" y="191" width="22" height="22"/>
-<rect x="224" y="191" width="22" height="22"/><rect x="274" y="191" width="22" height="22"/><rect x="324" y="191" width="22" height="22"/><rect x="374" y="191" width="22" height="22"/>
-</g></svg><p class="lab a fx-fade" data-s="1" style="text-align:center;margin-top:8px">each square = one number a guess can check</p></div>
-    <div>
-      <div class="a fx-up" data-s="1">
-        <div class="lvl"><span>Guess 1 can check</span><span>1</span></div>
-        <div class="lvl"><span>Guess 2 can check</span><span>2</span></div>
-        <div class="lvl"><span>Guess 3 can check</span><span>4</span></div>
+  <p class="sub a fx-fade" data-s="0">Binary search is not the only way to search. It depends on what question you are allowed to ask.</p>
+  <div class="two" style="grid-template-columns:1fr 292px;gap:0 22px;align-items:start">
+    <table class="oth a fx-up" data-s="0">
+      <tr><td>Method</td><td>How it works</td><td>Sorted data?</td><td>Worst case</td></tr>
+      <tr><td><b>Check one by one</b></td><td>Look at every item in turn.</td><td class="ok">No</td><td class="num"><i>N</i></td></tr>
+      <tr class="hl"><td><b>Binary search</b></td><td>Guess the middle, throw away half.</td><td>Yes</td><td class="num">log<sub>2</sub>(<i>N</i>)</td></tr>
+      <tr class="a fx-fade" data-s="1"><td><b>Interpolation search</b></td><td>Guess by proportion, like opening a dictionary near W.</td><td>Yes, and evenly spread</td><td class="num">log<sub>2</sub>log<sub>2</sub>(<i>N</i>) typical<small><i>N</i> if data is uneven</small></td></tr>
+      <tr class="a fx-fade" data-s="2"><td><b>Hashing</b></td><td>Compute where the item lives, jump straight there.</td><td class="ok">No<small>but needs extra memory</small></td><td class="num">≈ 1<small>on average</small></td></tr>
+    </table>
+    <div class="stack" style="margin-top:6px">
+      <div class="viz a fx-fade" data-s="1">
+        <p class="lab">Interpolation · find 88</p>
+        <div class="ibar"><div class="imid"><span>middle</span></div><div class="iptr a fx-interp" data-s="1"><b>jump to 88%</b></div></div>
+        <div class="iends"><span>1</span><span>100</span></div>
+        <p class="vcap">Starts near the end, not the middle.</p>
       </div>
-      <div class="a fx-up num" data-s="2">
-        <div class="lvl"><span>19 guesses in total</span><span>524,287</span></div>
-        <div class="lvl tot"><span>20 guesses in total</span><span>1,048,575</span></div>
+      <div class="viz a fx-fade" data-s="2">
+        <p class="lab">Hashing · find 88</p>
+        <div class="hrow"><div class="hk">88</div><span class="harr" style="left:54px">→</span><div class="hf">h(x)</div><span class="harr" style="left:162px">→ slot 3</span><div class="htok a fx-hash" data-s="2">88</div></div>
+        <div class="hslots"><i>0</i><i>1</i><i>2</i><i class="hit">3<div class="a fx-pop" data-s="2" style="--d:1.9s">88</div></i><i>4</i><i>5</i><i>6</i><i>7</i></div>
+        <p class="vcap">No higher or lower: the function says where.</p>
       </div>
-      <div class="call a fx-up" data-s="3" style="margin-top:14px;font-size:19px">524,287 &lt; 1,000,000, so 19 guesses are never enough. 20 is the best possible.</div>
     </div>
   </div>
+  <div class="call a fx-up" data-s="3" style="margin-top:10px;font-size:18px;padding:10px 16px">As long as each answer is only <b>higher or lower</b>, binary search is the best you can do. To go faster, you need a stronger question.</div>
 </div>
 <div class="pnum">10</div>
 </section>
@@ -376,12 +425,12 @@ table.cmp{width:100%;border-collapse:collapse;font-size:21px;margin-top:6px}
   <div class="box a fx-up" data-s="0" style="display:flex;flex-direction:column;gap:12px">
     <p class="lab">Question 1</p>
     <p class="txt" style="flex:1">A dictionary has <b>1,000 pages</b> in alphabetical order. Using binary search, how many page checks do you need, at most, to find one word?</p>
-    <div class="call a fx-up" data-s="1" style="background:#fff"><b>10.</b> 2<sup>10</sup> = 1,024, which is more than 1,000.</div>
+    <div class="call a fx-up" data-s="1" style="background:#fff"><b style="display:block;font-size:26px;margin-bottom:4px">10 checks</b>2<sup>10</sup> = 1,024, which is more than 1,000.</div>
   </div>
   <div class="box a fx-up" data-s="0" style="display:flex;flex-direction:column;gap:12px">
     <p class="lab">Question 2</p>
     <p class="txt" style="flex:1">Your TA drops a <b>messy, unsorted pile</b> of 200 exams on the desk. Can you use binary search to find your exam?</p>
-    <div class="call a fx-up" data-s="2" style="background:#fff"><b>No.</b> The pile is not sorted. Sort it first, or check one by one.</div>
+    <div class="call a fx-up" data-s="2" style="background:#fff"><b style="display:block;font-size:26px;margin-bottom:4px">No</b>The pile is not sorted. Sort it first, or check one by one.</div>
   </div>
 </div>
 <div class="pnum">11</div>
@@ -395,7 +444,7 @@ table.cmp{width:100%;border-collapse:collapse;font-size:21px;margin-top:6px}
     <div class="pt"><b>Optimal</b>With higher or lower answers, no strategy can do better.</div>
   </div>
   <p class="sub a fx-up" data-s="1" style="margin-top:22px">Where you will see it: looking up a word in a dictionary, <i>git bisect</i> for finding a bug, database indexes.</p>
-  <p class="a fx-up" data-s="1" style="margin-top:26px;font-size:32px;color:#3b5b7a">Thank you! Questions?</p>
+  <p class="a fx-up" data-s="1" style="margin-top:26px;font-size:32px;color:#3b5b7a">Thank you!</p>
 </div>
 <div class="pnum">12</div>
 </section>
@@ -424,7 +473,7 @@ table.cmp{width:100%;border-collapse:collapse;font-size:21px;margin-top:6px}
   <button id="bFs" title="Fullscreen (F)">⛶</button>
 </div>
 <script>
-const NOTES = ["Hi everyone, I'm Jane. Has anyone played the number-guessing game before? Today we'll find out how few questions we really need to find a secret number, and why.", "Explain the rules: think of a number from 1 to 100, and you can only answer higher, lower or correct. ★ Ask two or three students what their first guess would be and why. Typical answers are 1, a random number, or 50. Don't judge yet, just say: let's test it.", "Pick one volunteer to think of a number and write it down. Once they are ready, click Start to show the first guess, then click their answers. When it's done, ask the class: what did you notice about my guesses?", "Ask first: what strategy was I using? Let students describe it in their own words. ★ Show the three steps: guess the middle, listen, throw away half. ★ Name it: this is called binary search. ★ Point at the bars: every guess cuts what is left in half, so for 1 to 100, seven guesses are always enough.", "Ask: we are looking for 34 and the middle is 19. In the sorted row, which half can we throw away? ★ The left half, since everything there is smaller than 19. ★ Now the shuffled row: 34 could be anywhere, so we can't throw anything away. ★ So binary search needs sorted data.", "Show of hands for each option, then ask one student to explain their choice. ★ Reveal: at most 20. That is ten thousand times more numbers, but only 13 more guesses.", "New volunteer, number from 1 to 1,000,000. Click Start, then watch the count of possible numbers drop: one million, five hundred thousand, two hundred fifty thousand, and so on. Ask: how many guesses did we need?", "Checking one by one means guessing 1, 2, 3 and so on. We just saw that one million takes 20 guesses. Ask the class to predict one billion. ★ It's only 30, so 30 seconds instead of about 32 years. ★ The more numbers there are, the bigger the gap.", "Walk along the chain: each guess halves what is left. After 19 guesses only one number remains, and guess 20 names it. ★ Counting halvings has a name, log base 2 of N. Students don't need to compute logs, just ask how many times they can halve the number. ★ Quick check: 2 to the 19 is too small, 2 to the 20 is just over a million.", "Ask: could a smarter strategy guarantee fewer than 20? ★ Build the tree: the first guess can only be right about one number. If it's wrong, the answer goes one of two ways, so guess 2 can check at most 2 numbers, guess 3 at most 4. ★ Adding up, 19 guesses cover at most 524,287 numbers, and 20 cover just over a million. ★ So 19 is never enough, and binary search is the best possible.", "Give about 20 seconds per question and let students talk to a neighbour. ★ Question 1: 2 to the 10 is 1,024, so 10 checks. ★ Question 2: no, the pile isn't sorted, so we can't throw half away.", "Recap the four ideas: the strategy, the sorted-data requirement, about log base 2 of N guesses, and that it is optimal. ★ Mention one real use, for example git bisect for finding which code change caused a bug. Then open the floor for questions."];
+const NOTES = ["Hi everyone, I'm Jane. I'm not going to tell you today's topic yet. Let's start with a quick game, and you'll see what it is.", "Here's how the game works. One of you is going to think of a secret number between 1 and 100. I'll try to guess it. And every time I guess, you can only tell me one of three things: higher, lower, or correct. That's it. Let's play.", "Can I get a volunteer? Think of a number between 1 and 100, write it down so you can't change it, and don't tell anyone. Ready? [click Start] Okay, my first guess is 50. Is your number higher or lower? [click their answer, say each new guess out loud] ... Got it! [read the number of guesses] Never more than seven. Now, everyone else: what did you notice about the way I was guessing?", "So, what was I doing? [let two or three students describe it in their own words] Exactly. ★ Every single turn, I did the same three things. I guessed the number right in the middle of whatever was left. I listened: higher or lower. And then I threw away the half that couldn't possibly have the answer. And I just kept repeating that. ★ And that's today's topic. This strategy has a name: binary search. ★ Look at the bars on the right. I started with 100 possibilities. One guess, and I'm down to 50. Another guess, 25. Then 12, 6, 3, 1. So by the seventh guess I'm guaranteed to have it, no matter which number you picked.", "Now, there's a catch. Here are eight numbers, and I'm looking for 34. The middle one is 19. In the top row the numbers are sorted. Which half can I throw away? ★ Right, the left half. 34 is bigger than 19, and everything to the left of 19 is smaller than 19, so the answer can't be there. Gone. ★ Now look at the bottom row. Same numbers, but shuffled. The middle is still 19, and 34 is still bigger than 19. Can I throw the left half away? No. 34 could be anywhere. In fact, it's right there on the left. ★ So this is the one thing binary search needs: the data has to be sorted. If it isn't sorted, cutting in half tells you nothing.", "Let's make the problem a lot harder. Instead of one to a hundred, pick a number from one to one million. If I use the same strategy, how many guesses will I need, at most? Show of hands. Who says one thousand? Who says 100? 50? 20? [ask one student to explain their choice] ★ The answer is 20. At most 20. Think about that: ten thousand times more numbers, but only 13 more guesses.", "Let's compare this with the obvious approach: checking one by one. 1, 2, 3, 4, and so on. For 100 numbers that's up to 100 checks, versus our 7. For a million numbers that's a million checks. If each check takes one second, that's about 11 and a half days. Binary search? 20 seconds. Now, what about a billion? One by one takes a billion checks, about 32 years. What do you think binary search needs? ★ 30. Just 30 guesses, so 30 seconds instead of 32 years. ★ And that's the pattern: the more numbers you have, the bigger the gap gets.", "So why so few guesses? Let's draw it as a tree. Back to 1 to 100. At the root, when I make my first guess, every number from 1 to 100 is still possible. ★ My first guess splits that in half: 1 to 50 on the left, 51 to 100 on the right. Whatever you answer, I move down to one of those two children. The second guess splits again: 1 to 25, 26 to 50, and so on. Every guess takes me one level further down the tree. The dark path is one game: you kept saying higher, so I kept going right. ★ Keep going, and at the bottom every node is a single number. For 1 to 100 that takes 7 levels: 100, 50, 25, 12, 6, 3, 1. So the most guesses I'll ever need is just the depth of this tree. ★ And the depth is how many times you can halve N before only 1 is left. That has a name: log base 2 of N, or just log N for short. You don't need to compute any logs, just count the halvings. For one million it's 20 halvings, so 20 guesses. Quick check: two to the twentieth is one million, forty-eight thousand, five hundred seventy-six, just over a million.", "One more question. Could a smarter strategy guarantee fewer than 7 guesses for 1 to 100? Any strategy at all? ★ Here's the same tree again, but now each node shows the number I guess at that point. My first guess is 50, and it can be right about exactly one number. If it's wrong, you say higher or lower, so I go one of two ways: 25 or 75. That means my second guess can be right about at most 2 numbers. The third guess, at most 4. The fourth, at most 8. Every level doubles. ★ Add it all up: 6 guesses cover at most 1 plus 2 plus 4, all the way to 32, which is 63 numbers. 7 guesses cover 127. ★ And 63 is less than 100. So with 6 guesses there's always some number I would miss. 7 isn't just good, it's the best possible, as long as the only answers are higher or lower. And the same counting gives 20 for one million.", "Before we wrap up, you might be wondering: is binary search the only way to search? No. You already know two. Checking one by one needs no sorting but takes N steps. Binary search needs sorted data and takes log N. ★ Here's a clever one: interpolation search. Instead of the middle, you guess by proportion. Watch the marker: we're looking for 88 out of 100, so it jumps straight to about 88 percent of the way, not to the middle. Same idea as opening the dictionary near the end for a word starting with W. On evenly spread data that's even faster than binary search. But if the data is uneven, it can degrade all the way back to checking one by one. ★ And then there's hashing, which changes the question entirely. Watch: the key 88 goes into a function, the function says slot 3, and we jump straight there. About one step on average, no higher or lower at all. The price is extra memory, and you can't ask range questions like which items are between 30 and 40. ★ So here's the big picture. As long as the only answers are higher or lower, binary search is the best you can do. To go faster, you need a stronger question.", "Your turn. Two quick questions. Turn to the person next to you, you get about 20 seconds for each one. First: a dictionary has one thousand pages in alphabetical order. Using binary search, how many pages do you need to check, at most, to find a word? [wait, then take an answer] ★ Right, 10. 2 to the 10 is one thousand twenty-four, which is more than one thousand. Second question: your TA drops a messy, unsorted pile of 200 exams on the desk. Can you use binary search to find yours? [wait, then take an answer] ★ No. The pile isn't sorted, so you can't throw half of it away. You'd have to sort it first, or just go through it one by one.", "So let's wrap up. Four things to remember. The strategy: guess the middle, throw away half, repeat. The requirement: the data has to be sorted. The speed: about log N guesses. 7 for a hundred, 20 for a million, 30 for a billion. And it's optimal: with higher or lower answers, nothing beats it. ★ You'll run into this everywhere. Looking up a word in a dictionary. Git bisect, which finds the commit that broke your code by binary searching through the history. Database indexes. That's binary search. Thank you!"];
 
 
 // ---- guessing game ----
@@ -434,9 +483,9 @@ function makeGame(root, max, worst, showMax){
   const g = {root, min: 1, max, worst, showMax};
   resetGame(g);
   root.addEventListener('click', e => {
-    if (e.target.closest('[data-start]')) { g.started = true; renderGame(g); return; }
+    if (e.target.closest('[data-start]')) { g.started = true; renderGame(g); sendGame(); return; }
     const a = e.target.closest('[data-answer]')?.dataset.answer;
-    if (a) answerGame(g, a);
+    if (a) { answerGame(g, a); sendGame(); }
   });
   return g;
 }
@@ -485,10 +534,9 @@ function renderGame(g){
     </div>`;
 }
 const games = {
-  small: makeGame(document.getElementById('game-small'), 100, 7, false),
-  large: makeGame(document.getElementById('game-large'), 1000000, 20, true)
+  small: makeGame(document.getElementById('game-small'), 100, 7, false)
 };
-document.querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', () => resetGame(games[b.dataset.reset])));
+document.querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', () => { resetGame(games[b.dataset.reset]); sendGame(); }));
 
 const deck = document.getElementById('deck'), stage = document.getElementById('stage');
 const slides = [...deck.querySelectorAll('.slide')], N = slides.length;
@@ -620,6 +668,19 @@ function send(){
   if (applying) return;
   const t = target(); if (t) try { t.postMessage({nsa: 'state', i: cur, k: step}, '*'); } catch (e) {}
 }
+// the guessing game is mirrored too: every click sends the full game state to the other window
+const gameState = g => ({lo: g.lo, hi: g.hi, log: g.log, started: g.started, done: g.done});
+function sendGame(){
+  if (applying) return;
+  const t = target(); if (!t) return;
+  const st = {}; for (const k in games) st[k] = gameState(games[k]);
+  try { t.postMessage({nsa: 'game', games: st}, '*'); } catch (e) {}
+}
+function applyGames(st){
+  applying = true;
+  for (const k in st) if (games[k]) { Object.assign(games[k], st[k]); renderGame(games[k]); }
+  applying = false;
+}
 function setState(i, k){
   if (i !== cur) { go(i); if (k > 0) { step = k; show(slides[cur], k, false); update(); } }
   else if (k !== step) { const anim = k === step + 1; step = k; show(slides[cur], k, anim); update(); }
@@ -627,8 +688,9 @@ function setState(i, k){
 window.addEventListener('message', e => {
   const d = e.data; if (!d || !d.nsa) return;
   if (!PRESENTER) peer = e.source;
-  if (d.nsa === 'hello') send();
+  if (d.nsa === 'hello') { send(); sendGame(); }
   if (d.nsa === 'state') { applying = true; setState(d.i, d.k); applying = false; }
+  if (d.nsa === 'game') applyGames(d.games);
 });
 function openPresenter(){
   // P toggles: inside the presenter window it closes it; in the audience window it opens or closes it

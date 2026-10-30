@@ -20,7 +20,7 @@ between the `SLIDES START/END` markers and inside the `NOTES` array.
 
 Finished decks that show the quality bar live in `examples/` at the repository root, named
 `<type>-<topic>.html`. Read the one matching your deck type before your first deck:
-`examples/lesson-binary-search.html` (teaching lesson with interactive widgets, flow layout),
+`examples/lesson-binary-search.html` (teaching lesson with an interactive widget, flow layout),
 `examples/discussion-agents-and-images.html` (course discussion with diagrams and SVG arrows),
 `examples/paper-native-sparse-attention.html` (paper presentation with magic move, fade-outs,
 count-ups, images). Name new decks the same way, `lesson-`, `discussion-` or `paper-` plus a

@@ -49,7 +49,7 @@ Open any of these in a browser and press `→`.
 
 | File | Type | Shows |
 |---|---|---|
-| [`examples/lesson-binary-search.html`](examples/lesson-binary-search.html) | teaching lesson | polls, exercises, two interactive guessing-game widgets |
+| [`examples/lesson-binary-search.html`](examples/lesson-binary-search.html) | teaching lesson | polls, exercises, an interactive guessing-game widget, step-by-step tree and search-method animations |
 | [`examples/discussion-agents-and-images.html`](examples/discussion-agents-and-images.html) | course discussion | box-and-arrow diagrams, SVG connectors, discussion questions |
 | [`examples/paper-native-sparse-attention.html`](examples/paper-native-sparse-attention.html) | paper presentation | magic move, fade-outs, count-ups, embedded figures |
 
